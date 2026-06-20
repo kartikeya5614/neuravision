@@ -1,6 +1,7 @@
 """
 NEURAVISION — Configuration
-Edit the values below to match your PostgreSQL setup.
+Reads from environment variables (set in Render dashboard for cloud deployment)
+Falls back to local defaults for local development.
 """
 import os
 
@@ -8,15 +9,15 @@ class Config:
     # ── PostgreSQL ────────────────────────────────────────────────
     DB_HOST     = os.getenv("DB_HOST",     "localhost")
     DB_PORT     = int(os.getenv("DB_PORT", 5432))
-    DB_USER     = os.getenv("DB_USER",     "postgres")      # your postgres username
-    DB_PASSWORD = os.getenv("DB_PASSWORD", "#March271996")  # your postgres password
+    DB_USER     = os.getenv("DB_USER",     "postgres")
+    DB_PASSWORD = os.getenv("DB_PASSWORD", "#March271996")
     DB_NAME     = os.getenv("DB_NAME",     "neuravision")
 
     # ── Flask ─────────────────────────────────────────────────────
     SECRET_KEY  = os.getenv("SECRET_KEY",  "neuravision-local-secret")
-    DEBUG       = True
+    DEBUG       = os.getenv("DEBUG", "true").lower() == "true"
 
     # ── Face Recognition ──────────────────────────────────────────
-    RECOGNITION_THRESHOLD = 0.55   # lower = stricter match
-    LIVENESS_THRESHOLD    = 0.55   # minimum liveness score
-    ATTENDANCE_COOLDOWN   = 30     # seconds before re-logging same person
+    RECOGNITION_THRESHOLD = 0.40
+    LIVENESS_THRESHOLD    = 0.55
+    ATTENDANCE_COOLDOWN   = 30
