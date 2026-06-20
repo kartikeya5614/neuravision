@@ -3,1013 +3,748 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEURAVISION — Face Intelligence System</title>
+<title>NEURAVISION — Azure Face Intelligence</title>
 <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@7.0.12/dist/browser/signalr.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --neon-cyan: #00f5ff;
-    --neon-green: #00ff88;
-    --neon-red: #ff0055;
-    --neon-amber: #ffaa00;
-    --neon-purple: #9d4edd;
-    --bg-dark: #030812;
-    --bg-panel: rgba(0, 245, 255, 0.03);
-    --border-glow: rgba(0, 245, 255, 0.25);
-    --text-primary: #e0f7ff;
-    --text-muted: rgba(0, 245, 255, 0.5);
+    --neon-cyan:#00f5ff;--neon-green:#00ff88;--neon-red:#ff0055;
+    --neon-amber:#ffaa00;--neon-purple:#9d4edd;
+    --bg-dark:#030812;--bg-panel:rgba(0,245,255,0.03);
+    --border-glow:rgba(0,245,255,0.25);--text-primary:#e0f7ff;--text-muted:rgba(0,245,255,0.5);
   }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; background: var(--bg-dark); color: var(--text-primary); font-family: 'Rajdhani', sans-serif; overflow-x: hidden; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;background:var(--bg-dark);color:var(--text-primary);font-family:'Rajdhani',sans-serif;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,245,255,0.015) 2px,rgba(0,245,255,0.015) 4px);pointer-events:none;z-index:1000;}
+  body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,245,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,255,0.04) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0;}
+  .app{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh;}
 
-  /* Scanline overlay */
-  body::before {
-    content: '';
-    position: fixed; inset: 0;
-    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,245,255,0.015) 2px, rgba(0,245,255,0.015) 4px);
-    pointer-events: none; z-index: 1000;
-  }
-  /* Grid bg */
-  body::after {
-    content: '';
-    position: fixed; inset: 0;
-    background-image: linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
-    background-size: 60px 60px;
-    pointer-events: none; z-index: 0;
-  }
+  header{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;border-bottom:1px solid var(--border-glow);background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);}
+  .logo-text{font-family:'Orbitron',monospace;font-weight:900;font-size:1.4rem;letter-spacing:4px;color:var(--neon-cyan);animation:glitch 5s infinite;}
+  .logo-sub{font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--text-muted);letter-spacing:3px;}
+  @keyframes glitch{0%,100%{text-shadow:0 0 20px rgba(0,245,255,0.5);}2%{text-shadow:-3px 0 var(--neon-red),3px 0 var(--neon-green);}4%{text-shadow:0 0 20px rgba(0,245,255,0.5);}96%{text-shadow:-2px 0 var(--neon-purple),2px 0 var(--neon-cyan);}98%{text-shadow:0 0 20px rgba(0,245,255,0.5);}}
+  .header-status{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;}
+  .badge{font-family:'Share Tech Mono',monospace;font-size:0.65rem;padding:4px 10px;border:1px solid;letter-spacing:2px;}
+  .badge.green{border-color:var(--neon-green);color:var(--neon-green);background:rgba(0,255,136,0.08);}
+  .badge.amber{border-color:var(--neon-amber);color:var(--neon-amber);background:rgba(255,170,0,0.08);}
+  .badge.red{border-color:var(--neon-red);color:var(--neon-red);background:rgba(255,0,85,0.08);}
+  .clock{font-family:'Share Tech Mono',monospace;font-size:0.85rem;color:var(--text-muted);}
 
-  .app { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  main{flex:1;display:grid;grid-template-columns:1fr 340px;gap:0;}
+  .camera-zone{position:relative;display:flex;flex-direction:column;border-right:1px solid var(--border-glow);background:#000;}
+  .camera-header{padding:.75rem 1.5rem;border-bottom:1px solid var(--border-glow);display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,.8);}
+  .section-label{font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--text-muted);letter-spacing:3px;}
+  .rec-dot{width:8px;height:8px;border-radius:50%;background:var(--neon-red);animation:blink 1s infinite;display:inline-block;margin-right:6px;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+  .video-container{position:relative;flex:1;display:flex;align-items:center;justify-content:center;background:#000;min-height:460px;}
+  #videoEl{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1);}
+  #overlayCanvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);}
+  .corner{position:absolute;width:28px;height:28px;z-index:10;}
+  .corner.tl{top:10px;left:10px;border-top:2px solid var(--neon-cyan);border-left:2px solid var(--neon-cyan);}
+  .corner.tr{top:10px;right:10px;border-top:2px solid var(--neon-cyan);border-right:2px solid var(--neon-cyan);}
+  .corner.bl{bottom:10px;left:10px;border-bottom:2px solid var(--neon-cyan);border-left:2px solid var(--neon-cyan);}
+  .corner.br{bottom:10px;right:10px;border-bottom:2px solid var(--neon-cyan);border-right:2px solid var(--neon-cyan);}
+  .scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--neon-cyan),transparent);opacity:.6;animation:scan 3s linear infinite;z-index:5;}
+  @keyframes scan{0%{top:0;}100%{top:100%;}}
+  .hud-tl{position:absolute;top:16px;left:16px;font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--neon-cyan);z-index:10;line-height:1.8;text-shadow:0 0 8px rgba(0,245,255,.5);}
+  .hud-tr{position:absolute;top:16px;right:16px;font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--neon-green);z-index:10;text-align:right;line-height:1.8;text-shadow:0 0 8px rgba(0,255,136,.5);}
+  /* Azure cloud badge in corner */
+  .cloud-badge{position:absolute;bottom:16px;right:16px;font-family:'Share Tech Mono',monospace;font-size:.6rem;padding:4px 10px;border:1px solid var(--neon-cyan);color:var(--neon-cyan);background:rgba(0,0,0,.7);z-index:10;letter-spacing:2px;}
 
-  /* Header */
-  header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 1rem 2rem;
-    border-bottom: 1px solid var(--border-glow);
-    background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(10px);
-  }
-  .logo { display: flex; align-items: center; gap: 12px; }
-  .logo-icon {
-    width: 40px; height: 40px;
-    border: 2px solid var(--neon-cyan);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    position: relative; overflow: hidden;
-  }
-  .logo-icon svg { width: 24px; height: 24px; }
-  .logo-text { font-family: 'Orbitron', monospace; font-weight: 900; font-size: 1.4rem; letter-spacing: 4px; color: var(--neon-cyan); text-shadow: 0 0 20px rgba(0,245,255,0.5); }
-  .logo-sub { font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; color: var(--text-muted); letter-spacing: 3px; }
-  .header-status { display: flex; gap: 1.5rem; align-items: center; }
-  .status-badge {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.7rem;
-    padding: 4px 10px;
-    border: 1px solid;
-    letter-spacing: 2px;
-  }
-  .status-badge.online { border-color: var(--neon-green); color: var(--neon-green); background: rgba(0,255,136,0.08); }
-  .status-badge.warning { border-color: var(--neon-amber); color: var(--neon-amber); background: rgba(255,170,0,0.08); }
-  .clock { font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; color: var(--text-muted); }
+  #placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000;z-index:20;gap:1.5rem;}
+  .ph-circle{width:100px;height:100px;border-radius:50%;border:2px solid var(--neon-cyan);display:flex;align-items:center;justify-content:center;position:relative;animation:spin 8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .ph-circle::before{content:'';position:absolute;inset:8px;border-radius:50%;border:1px solid rgba(0,245,255,.3);animation:spin 4s linear infinite reverse;}
+  .ph-icon{font-size:2.5rem;animation:spin 8s linear infinite reverse;}
+  .ph-text{font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--text-muted);letter-spacing:3px;text-align:center;line-height:2;}
+  #startBtn{font-family:'Orbitron',monospace;font-size:.75rem;font-weight:700;letter-spacing:3px;padding:12px 32px;background:transparent;border:1px solid var(--neon-cyan);color:var(--neon-cyan);cursor:pointer;transition:all .2s;}
+  #startBtn:hover{background:rgba(0,245,255,.1);box-shadow:0 0 20px rgba(0,245,255,.3);}
 
-  /* Main layout */
-  main { flex: 1; display: grid; grid-template-columns: 1fr 340px; grid-template-rows: auto 1fr; gap: 0; }
+  .camera-controls{padding:.75rem 1.5rem;border-top:1px solid var(--border-glow);display:flex;gap:1rem;align-items:center;background:rgba(0,0,0,.8);}
+  .ctrl-btn{font-family:'Share Tech Mono',monospace;font-size:.65rem;padding:6px 14px;border:1px solid;background:transparent;cursor:pointer;letter-spacing:2px;transition:all .2s;}
+  .ctrl-btn.cyan{border-color:var(--neon-cyan);color:var(--neon-cyan);}
+  .ctrl-btn.cyan:hover{background:rgba(0,245,255,.1);}
+  .ctrl-btn.green{border-color:var(--neon-green);color:var(--neon-green);}
+  .ctrl-btn.green:hover{background:rgba(0,255,136,.1);}
+  .ctrl-btn.red{border-color:var(--neon-red);color:var(--neon-red);}
+  .ctrl-btn.red:hover{background:rgba(255,0,85,.1);}
+  .ctrl-btn:disabled{opacity:.3;cursor:not-allowed;}
+  .face-count{font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--text-muted);margin-left:auto;}
 
-  /* Camera section */
-  .camera-zone {
-    grid-row: 1 / 3;
-    position: relative;
-    display: flex; flex-direction: column;
-    border-right: 1px solid var(--border-glow);
-    background: #000;
-  }
-  .camera-header {
-    padding: 0.75rem 1.5rem;
-    border-bottom: 1px solid var(--border-glow);
-    display: flex; align-items: center; justify-content: space-between;
-    background: rgba(0,0,0,0.8);
-  }
-  .section-label { font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; color: var(--text-muted); letter-spacing: 3px; }
-  .rec-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--neon-red); animation: pulse-red 1s infinite; display: inline-block; margin-right: 6px; }
-  @keyframes pulse-red { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+  .sidebar{display:flex;flex-direction:column;overflow:hidden;}
+  .panel{border-bottom:1px solid var(--border-glow);background:var(--bg-panel);}
+  .panel-header{padding:.6rem 1rem;border-bottom:1px solid var(--border-glow);display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,.5);}
+  .panel-title{font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--text-muted);letter-spacing:3px;}
+  .panel-body{padding:.75rem 1rem;}
 
-  .video-container {
-    position: relative; flex: 1;
-    display: flex; align-items: center; justify-content: center;
-    background: #000; min-height: 460px;
-  }
-  #videoEl {
-    width: 100%; height: 100%;
-    object-fit: cover; display: block;
-    transform: scaleX(-1);
-  }
-  #overlayCanvas {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-    transform: scaleX(-1);
-  }
+  /* Azure service indicators */
+  .azure-services{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .svc-pill{font-family:'Share Tech Mono',monospace;font-size:.55rem;padding:5px 8px;border:1px solid;letter-spacing:1px;text-align:center;transition:all .3s;}
+  .svc-pill.ok{border-color:var(--neon-green);color:var(--neon-green);background:rgba(0,255,136,.05);}
+  .svc-pill.err{border-color:var(--neon-red);color:var(--neon-red);background:rgba(255,0,85,.05);}
+  .svc-pill.checking{border-color:var(--neon-amber);color:var(--neon-amber);background:rgba(255,170,0,.05);animation:blink 1s infinite;}
 
-  /* Corner brackets */
-  .corner { position: absolute; width: 28px; height: 28px; z-index: 10; }
-  .corner.tl { top: 10px; left: 10px; border-top: 2px solid var(--neon-cyan); border-left: 2px solid var(--neon-cyan); }
-  .corner.tr { top: 10px; right: 10px; border-top: 2px solid var(--neon-cyan); border-right: 2px solid var(--neon-cyan); }
-  .corner.bl { bottom: 10px; left: 10px; border-bottom: 2px solid var(--neon-cyan); border-left: 2px solid var(--neon-cyan); }
-  .corner.br { bottom: 10px; right: 10px; border-bottom: 2px solid var(--neon-cyan); border-right: 2px solid var(--neon-cyan); }
+  .emotion-bars{display:flex;flex-direction:column;gap:8px;}
+  .emotion-row{display:flex;align-items:center;gap:8px;}
+  .emotion-name{font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--text-muted);width:70px;letter-spacing:1px;}
+  .emotion-track{flex:1;height:6px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden;}
+  .emotion-fill{height:100%;border-radius:3px;transition:width .3s ease;}
+  .emotion-pct{font-family:'Share Tech Mono',monospace;font-size:.6rem;width:32px;text-align:right;}
+  .ef-happy{background:var(--neon-green);}.ef-sad{background:#5588ff;}.ef-angry{background:var(--neon-red);}
+  .ef-fearful{background:var(--neon-purple);}.ef-disgusted{background:var(--neon-amber);}
+  .ef-surprised{background:#ff88cc;}.ef-neutral{background:var(--text-muted);}
 
-  /* Scanning line */
-  .scan-line {
-    position: absolute; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
-    opacity: 0.6; animation: scan 3s linear infinite; z-index: 5;
-  }
-  @keyframes scan { 0%{top:0;} 100%{top:100%;} }
+  .biometric-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .bio-card{background:rgba(0,0,0,.4);border:1px solid var(--border-glow);padding:8px 10px;text-align:center;}
+  .bio-label{font-family:'Share Tech Mono',monospace;font-size:.55rem;color:var(--text-muted);letter-spacing:2px;margin-bottom:4px;}
+  .bio-value{font-family:'Orbitron',monospace;font-size:1.1rem;font-weight:700;color:var(--neon-cyan);}
 
-  /* HUD overlays */
-  .hud-top-left {
-    position: absolute; top: 16px; left: 16px;
-    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
-    color: var(--neon-cyan); z-index: 10; line-height: 1.8;
-    text-shadow: 0 0 8px rgba(0,245,255,0.5);
-  }
-  .hud-top-right {
-    position: absolute; top: 16px; right: 16px;
-    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
-    color: var(--neon-green); z-index: 10; text-align: right; line-height: 1.8;
-    text-shadow: 0 0 8px rgba(0,255,136,0.5);
-  }
+  .liveness-panel{display:flex;flex-direction:column;gap:8px;}
+  .live-indicator{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid;font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:2px;transition:all .3s;}
+  .live-indicator.live{border-color:var(--neon-green);color:var(--neon-green);background:rgba(0,255,136,.05);}
+  .live-indicator.spoof{border-color:var(--neon-red);color:var(--neon-red);background:rgba(255,0,85,.05);}
+  .live-indicator.idle{border-color:var(--border-glow);color:var(--text-muted);}
+  .live-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .live-indicator.live .live-dot{background:var(--neon-green);box-shadow:0 0 6px var(--neon-green);animation:blink 1s infinite;}
+  .live-indicator.spoof .live-dot{background:var(--neon-red);}
+  .live-indicator.idle .live-dot{background:var(--text-muted);}
+  .conf-row{display:flex;justify-content:space-between;align-items:center;}
+  .conf-label{font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--text-muted);}
+  .conf-bar-wrap{width:120px;height:4px;background:rgba(255,255,255,.05);}
+  .conf-bar{height:100%;background:var(--neon-green);transition:width .3s;}
 
-  /* Placeholder */
-  #placeholder {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: #000; z-index: 20; gap: 1.5rem;
-  }
-  .ph-circle {
-    width: 100px; height: 100px; border-radius: 50%;
-    border: 2px solid var(--neon-cyan);
-    display: flex; align-items: center; justify-content: center;
-    position: relative; animation: spin-slow 8s linear infinite;
-  }
-  @keyframes spin-slow { to { transform: rotate(360deg); } }
-  .ph-circle::before {
-    content: ''; position: absolute; inset: 8px;
-    border-radius: 50%; border: 1px solid rgba(0,245,255,0.3);
-    animation: spin-slow 4s linear infinite reverse;
-  }
-  .ph-icon { font-size: 2.5rem; animation: spin-slow 8s linear infinite reverse; }
-  .ph-text { font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: var(--text-muted); letter-spacing: 3px; text-align: center; line-height: 2; }
-  #startBtn {
-    font-family: 'Orbitron', monospace; font-size: 0.75rem; font-weight: 700;
-    letter-spacing: 3px; padding: 12px 32px;
-    background: transparent; border: 1px solid var(--neon-cyan);
-    color: var(--neon-cyan); cursor: pointer; text-transform: uppercase;
-    transition: all 0.2s; position: relative; overflow: hidden;
-  }
-  #startBtn:hover { background: rgba(0,245,255,0.1); box-shadow: 0 0 20px rgba(0,245,255,0.3); }
-  #loadingMsg {
-    font-family: 'Share Tech Mono', monospace; font-size: 0.7rem;
-    color: var(--neon-amber); letter-spacing: 2px; display: none; text-align: center;
-  }
+  /* SignalR live feed */
+  .live-feed-dot{width:8px;height:8px;border-radius:50%;background:var(--neon-green);box-shadow:0 0 6px var(--neon-green);animation:blink 1s infinite;display:inline-block;margin-right:6px;}
+  .live-feed-dot.off{background:var(--text-muted);box-shadow:none;animation:none;}
 
-  /* Camera controls */
-  .camera-controls {
-    padding: 0.75rem 1.5rem;
-    border-top: 1px solid var(--border-glow);
-    display: flex; gap: 1rem; align-items: center;
-    background: rgba(0,0,0,0.8);
-  }
-  .ctrl-btn {
-    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
-    padding: 6px 14px; border: 1px solid;
-    background: transparent; cursor: pointer; letter-spacing: 2px;
-    transition: all 0.2s;
-  }
-  .ctrl-btn.cyan { border-color: var(--neon-cyan); color: var(--neon-cyan); }
-  .ctrl-btn.cyan:hover { background: rgba(0,245,255,0.1); }
-  .ctrl-btn.green { border-color: var(--neon-green); color: var(--neon-green); }
-  .ctrl-btn.green:hover { background: rgba(0,255,136,0.1); }
-  .ctrl-btn.red { border-color: var(--neon-red); color: var(--neon-red); }
-  .ctrl-btn.red:hover { background: rgba(255,0,85,0.1); }
-  .ctrl-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-  .face-count { font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; color: var(--text-muted); margin-left: auto; }
-  #faceCountDisplay { color: var(--neon-cyan); }
+  .attendance-section{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+  .attendance-log{flex:1;overflow-y:auto;max-height:180px;padding:.5rem 1rem;}
+  .attendance-log::-webkit-scrollbar{width:3px;}
+  .attendance-log::-webkit-scrollbar-thumb{background:var(--border-glow);}
+  .log-entry{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid rgba(0,245,255,.06);font-size:.7rem;animation:fadeIn .3s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:translateX(0);}}
+  .log-time{font-family:'Share Tech Mono',monospace;color:var(--text-muted);font-size:.6rem;flex-shrink:0;}
+  .log-name{font-family:'Rajdhani',sans-serif;font-weight:600;color:var(--text-primary);flex:1;}
+  .log-status{font-family:'Share Tech Mono',monospace;font-size:.55rem;padding:2px 6px;letter-spacing:1px;}
+  .log-status.in{border:1px solid var(--neon-green);color:var(--neon-green);background:rgba(0,255,136,.08);}
+  .log-cloud{font-size:.55rem;color:var(--neon-cyan);font-family:'Share Tech Mono',monospace;}
+  .log-empty{font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--text-muted);text-align:center;padding:1.5rem;letter-spacing:2px;}
 
-  /* Right sidebar */
-  .sidebar { display: flex; flex-direction: column; overflow: hidden; }
+  .stats-footer{border-top:1px solid var(--border-glow);display:grid;grid-template-columns:1fr 1fr 1fr;background:rgba(0,0,0,.8);}
+  .stat-cell{padding:.75rem 1rem;border-right:1px solid var(--border-glow);text-align:center;}
+  .stat-cell:last-child{border-right:none;}
+  .stat-n{font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:700;color:var(--neon-cyan);}
+  .stat-l{font-family:'Share Tech Mono',monospace;font-size:.55rem;color:var(--text-muted);letter-spacing:2px;margin-top:2px;}
 
-  /* Panels */
-  .panel {
-    border-bottom: 1px solid var(--border-glow);
-    background: var(--bg-panel);
-  }
-  .panel-header {
-    padding: 0.6rem 1rem;
-    border-bottom: 1px solid var(--border-glow);
-    display: flex; align-items: center; justify-content: space-between;
-    background: rgba(0,0,0,0.5);
-  }
-  .panel-title { font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; color: var(--text-muted); letter-spacing: 3px; }
-  .panel-body { padding: 0.75rem 1rem; }
+  .neural-viz{padding:.75rem 1rem;}
+  #neuralCanvas{width:100%;height:70px;display:block;}
 
-  /* Emotion meter */
-  .emotion-bars { display: flex; flex-direction: column; gap: 8px; }
-  .emotion-row { display: flex; align-items: center; gap: 8px; }
-  .emotion-name { font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; color: var(--text-muted); width: 70px; letter-spacing: 1px; }
-  .emotion-track { flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
-  .emotion-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
-  .emotion-pct { font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; width: 32px; text-align: right; }
-  .emotion-fill.happy { background: var(--neon-green); }
-  .emotion-fill.sad { background: #5588ff; }
-  .emotion-fill.angry { background: var(--neon-red); }
-  .emotion-fill.fearful { background: var(--neon-purple); }
-  .emotion-fill.disgusted { background: var(--neon-amber); }
-  .emotion-fill.surprised { background: #ff88cc; }
-  .emotion-fill.neutral { background: var(--text-muted); }
+  /* Config panel */
+  .config-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .config-label{font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--text-muted);width:70px;letter-spacing:1px;}
+  .config-input{flex:1;background:rgba(0,245,255,.04);border:1px solid var(--border-glow);color:var(--text-primary);padding:5px 8px;font-family:'Share Tech Mono',monospace;font-size:.65rem;outline:none;}
+  .config-input:focus{border-color:var(--neon-cyan);}
+  .save-btn{font-family:'Share Tech Mono',monospace;font-size:.6rem;padding:5px 12px;border:1px solid var(--neon-amber);color:var(--neon-amber);background:transparent;cursor:pointer;letter-spacing:2px;width:100%;margin-top:4px;}
+  .save-btn:hover{background:rgba(255,170,0,.1);}
 
-  /* Age & Gender */
-  .biometric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .bio-card {
-    background: rgba(0,0,0,0.4); border: 1px solid var(--border-glow);
-    padding: 8px 10px; text-align: center;
-  }
-  .bio-label { font-family: 'Share Tech Mono', monospace; font-size: 0.55rem; color: var(--text-muted); letter-spacing: 2px; margin-bottom: 4px; }
-  .bio-value { font-family: 'Orbitron', monospace; font-size: 1.1rem; font-weight: 700; color: var(--neon-cyan); }
-  .bio-value.gender-m { color: #5599ff; }
-  .bio-value.gender-f { color: #ff88cc; }
+  /* Modal */
+  #registerModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+  #registerModal.open{display:flex;}
+  .modal-box{background:#030812;border:1px solid var(--neon-cyan);padding:2rem;min-width:340px;box-shadow:0 0 40px rgba(0,245,255,.15);}
+  .modal-title{font-family:'Orbitron',monospace;font-size:.9rem;font-weight:700;color:var(--neon-cyan);letter-spacing:3px;margin-bottom:1.5rem;}
+  .modal-field{margin-bottom:1rem;}
+  .modal-label{font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--text-muted);letter-spacing:2px;margin-bottom:4px;display:block;}
+  .modal-input{width:100%;background:rgba(0,245,255,.04);border:1px solid var(--border-glow);color:var(--text-primary);padding:8px 12px;font-family:'Rajdhani',sans-serif;font-size:.9rem;outline:none;}
+  .modal-input:focus{border-color:var(--neon-cyan);}
+  .modal-actions{display:flex;gap:1rem;margin-top:1.5rem;}
+  .modal-btn{flex:1;font-family:'Share Tech Mono',monospace;font-size:.65rem;padding:10px;border:1px solid;background:transparent;cursor:pointer;letter-spacing:2px;}
+  .modal-btn.confirm{border-color:var(--neon-green);color:var(--neon-green);}
+  .modal-btn.confirm:hover{background:rgba(0,255,136,.1);}
+  .modal-btn.cancel{border-color:var(--border-glow);color:var(--text-muted);}
+  #registerSnapshot{width:100%;height:110px;object-fit:cover;border:1px solid var(--border-glow);margin-bottom:.5rem;background:#000;display:block;}
+  .modal-status{font-family:'Share Tech Mono',monospace;font-size:.6rem;margin-top:8px;padding:6px 10px;border:1px solid;letter-spacing:1px;display:none;}
+  .modal-status.ok{border-color:var(--neon-green);color:var(--neon-green);}
+  .modal-status.err{border-color:var(--neon-red);color:var(--neon-red);}
 
-  /* Liveness */
-  .liveness-panel { display: flex; flex-direction: column; gap: 8px; }
-  .live-indicator {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 10px; border: 1px solid;
-    font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; letter-spacing: 2px;
-    transition: all 0.3s;
-  }
-  .live-indicator.live { border-color: var(--neon-green); color: var(--neon-green); background: rgba(0,255,136,0.05); }
-  .live-indicator.spoof { border-color: var(--neon-red); color: var(--neon-red); background: rgba(255,0,85,0.05); }
-  .live-indicator.idle { border-color: var(--border-glow); color: var(--text-muted); background: transparent; }
-  .live-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .live-indicator.live .live-dot { background: var(--neon-green); box-shadow: 0 0 6px var(--neon-green); animation: pulse-red 1s infinite; }
-  .live-indicator.spoof .live-dot { background: var(--neon-red); box-shadow: 0 0 6px var(--neon-red); }
-  .live-indicator.idle .live-dot { background: var(--text-muted); }
-  .confidence-row { display: flex; justify-content: space-between; align-items: center; }
-  .conf-label { font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; color: var(--text-muted); }
-  .conf-bar-wrap { width: 120px; height: 4px; background: rgba(255,255,255,0.05); }
-  .conf-bar { height: 100%; background: var(--neon-green); transition: width 0.3s; }
-  .conf-pct { font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; color: var(--neon-green); }
+  #toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:2px;padding:10px 24px;border:1px solid var(--neon-green);color:var(--neon-green);background:rgba(0,10,5,.95);z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;}
+  #toast.show{opacity:1;}
+  #toast.error{border-color:var(--neon-red);color:var(--neon-red);}
 
-  /* Attendance log */
-  .attendance-section { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-  .attendance-log { flex: 1; overflow-y: auto; max-height: 200px; padding: 0.5rem 1rem; }
-  .attendance-log::-webkit-scrollbar { width: 3px; }
-  .attendance-log::-webkit-scrollbar-track { background: transparent; }
-  .attendance-log::-webkit-scrollbar-thumb { background: var(--border-glow); }
-  .log-entry {
-    display: flex; align-items: center; gap: 10px;
-    padding: 5px 0; border-bottom: 1px solid rgba(0,245,255,0.06);
-    font-size: 0.7rem; animation: fadeSlide 0.3s ease;
-  }
-  @keyframes fadeSlide { from { opacity:0; transform: translateX(-8px); } to { opacity:1; transform: translateX(0); } }
-  .log-time { font-family: 'Share Tech Mono', monospace; color: var(--text-muted); font-size: 0.6rem; flex-shrink: 0; }
-  .log-name { font-family: 'Rajdhani', sans-serif; font-weight: 600; color: var(--text-primary); flex: 1; }
-  .log-status { font-family: 'Share Tech Mono', monospace; font-size: 0.55rem; padding: 2px 6px; letter-spacing: 1px; }
-  .log-status.in { border: 1px solid var(--neon-green); color: var(--neon-green); background: rgba(0,255,136,0.08); }
-  .log-status.out { border: 1px solid var(--neon-red); color: var(--neon-red); background: rgba(255,0,85,0.08); }
-  .log-empty { font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; color: var(--text-muted); text-align: center; padding: 1.5rem; letter-spacing: 2px; }
-
-  /* Stats bar */
-  .stats-footer {
-    border-top: 1px solid var(--border-glow);
-    display: grid; grid-template-columns: 1fr 1fr 1fr;
-    background: rgba(0,0,0,0.8);
-  }
-  .stat-cell {
-    padding: 0.75rem 1rem;
-    border-right: 1px solid var(--border-glow);
-    text-align: center;
-  }
-  .stat-cell:last-child { border-right: none; }
-  .stat-n { font-family: 'Orbitron', monospace; font-size: 1.4rem; font-weight: 700; color: var(--neon-cyan); }
-  .stat-l { font-family: 'Share Tech Mono', monospace; font-size: 0.55rem; color: var(--text-muted); letter-spacing: 2px; margin-top: 2px; }
-
-  /* Neural activity viz */
-  .neural-viz { padding: 0.75rem 1rem; }
-  #neuralCanvas { width: 100%; height: 80px; display: block; }
-
-  /* Register modal */
-  #registerModal {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.85); z-index: 200;
-    align-items: center; justify-content: center;
-    backdrop-filter: blur(4px);
-  }
-  #registerModal.open { display: flex; }
-  .modal-box {
-    background: #030812;
-    border: 1px solid var(--neon-cyan);
-    padding: 2rem; min-width: 340px;
-    box-shadow: 0 0 40px rgba(0,245,255,0.15);
-    position: relative;
-  }
-  .modal-title { font-family: 'Orbitron', monospace; font-size: 0.9rem; font-weight: 700; color: var(--neon-cyan); letter-spacing: 3px; margin-bottom: 1.5rem; }
-  .modal-field { margin-bottom: 1rem; }
-  .modal-label { font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; color: var(--text-muted); letter-spacing: 2px; margin-bottom: 4px; display: block; }
-  .modal-input {
-    width: 100%; background: rgba(0,245,255,0.04);
-    border: 1px solid var(--border-glow); color: var(--text-primary);
-    padding: 8px 12px; font-family: 'Rajdhani', sans-serif; font-size: 0.9rem;
-    outline: none; transition: border-color 0.2s;
-  }
-  .modal-input:focus { border-color: var(--neon-cyan); }
-  .modal-actions { display: flex; gap: 1rem; margin-top: 1.5rem; }
-  .modal-btn {
-    flex: 1; font-family: 'Share Tech Mono', monospace; font-size: 0.65rem;
-    padding: 10px; border: 1px solid; background: transparent; cursor: pointer; letter-spacing: 2px;
-    transition: all 0.2s;
-  }
-  .modal-btn.confirm { border-color: var(--neon-green); color: var(--neon-green); }
-  .modal-btn.confirm:hover { background: rgba(0,255,136,0.1); }
-  .modal-btn.cancel { border-color: var(--border-glow); color: var(--text-muted); }
-  .modal-btn.cancel:hover { background: rgba(255,255,255,0.05); }
-  #registerSnapshot { width: 100%; height: 120px; object-fit: cover; border: 1px solid var(--border-glow); margin-bottom: 0.5rem; background: #000; display: block; }
-
-  /* Toast */
-  #toast {
-    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
-    font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; letter-spacing: 2px;
-    padding: 10px 24px; border: 1px solid var(--neon-green); color: var(--neon-green);
-    background: rgba(0,10,5,0.95); z-index: 999;
-    opacity: 0; transition: opacity 0.3s; pointer-events: none;
-  }
-  #toast.show { opacity: 1; }
-  #toast.error { border-color: var(--neon-red); color: var(--neon-red); }
-
-  /* Glitch effect on title */
-  @keyframes glitch {
-    0%,100%{ text-shadow: 0 0 20px rgba(0,245,255,0.5); }
-    2%{ text-shadow: -3px 0 var(--neon-red), 3px 0 var(--neon-green); }
-    4%{ text-shadow: 0 0 20px rgba(0,245,255,0.5); }
-    96%{ text-shadow: -2px 0 var(--neon-purple), 2px 0 var(--neon-cyan); }
-    98%{ text-shadow: 0 0 20px rgba(0,245,255,0.5); }
-  }
-  .logo-text { animation: glitch 5s infinite; }
-
-  /* Responsive */
-  @media (max-width: 900px) {
-    main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
-    .camera-zone { grid-row: 1; border-right: none; border-bottom: 1px solid var(--border-glow); }
-    .sidebar { grid-row: 2; }
-    .video-container { min-height: 280px; }
+  @media(max-width:900px){
+    main{grid-template-columns:1fr;}
+    .camera-zone{border-right:none;border-bottom:1px solid var(--border-glow);}
+    .video-container{min-height:280px;}
   }
 </style>
 </head>
 <body>
 <div class="app">
 
-  <!-- HEADER -->
-  <header>
-    <div class="logo">
-      <div class="logo-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#00f5ff" stroke-width="1.5">
-          <circle cx="12" cy="8" r="4"/>
-          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+<header>
+  <div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:40px;height:40px;border:2px solid var(--neon-cyan);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00f5ff" stroke-width="1.5">
+          <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
           <circle cx="12" cy="12" r="10" stroke-dasharray="3 2"/>
         </svg>
       </div>
       <div>
         <div class="logo-text">NEURAVISION</div>
-        <div class="logo-sub">FACE INTELLIGENCE SYSTEM v2.4.1</div>
+        <div class="logo-sub">AZURE FACE INTELLIGENCE v3.0 — CLOUD EDITION</div>
       </div>
     </div>
-    <div class="header-status">
-      <span class="status-badge online" id="modelStatus">◉ MODELS LOADING</span>
-      <span class="status-badge warning" id="cameraStatus">⚡ CAMERA OFFLINE</span>
-      <div class="clock" id="clockEl">--:--:--</div>
+  </div>
+  <div class="header-status">
+    <span class="badge amber" id="backendStatus">⚡ API CONNECTING</span>
+    <span class="badge amber" id="signalrStatus">⚡ REALTIME OFFLINE</span>
+    <span class="badge amber" id="cameraStatus">⚡ CAM OFFLINE</span>
+    <div class="clock" id="clockEl">--:--:--</div>
+  </div>
+</header>
+
+<main>
+  <!-- CAMERA -->
+  <div class="camera-zone">
+    <div class="camera-header">
+      <div><span class="rec-dot" id="recDot"></span><span class="section-label">LIVE FEED — CAM 01</span></div>
+      <span class="section-label" id="fpsDisplay">FPS: --</span>
     </div>
-  </header>
-
-  <!-- MAIN -->
-  <main>
-
-    <!-- CAMERA ZONE -->
-    <div class="camera-zone">
-      <div class="camera-header">
-        <div>
-          <span class="rec-dot" id="recDot"></span>
-          <span class="section-label">LIVE FEED — CAM 01</span>
-        </div>
-        <span class="section-label" id="fpsDisplay">FPS: --</span>
+    <div class="video-container">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="scan-line"></div>
+      <video id="videoEl" autoplay muted playsinline></video>
+      <canvas id="overlayCanvas"></canvas>
+      <div class="hud-tl" id="hudLeft">SYS: AZURE<br>ENGINE: FACE API<br>CLOUD: ACTIVE<br>MODE: LIVE</div>
+      <div class="hud-tr" id="hudRight">DETECT: ON<br>IDENTIFY: ON<br>LIVENESS: ON<br>LOG: CLOUD</div>
+      <div class="cloud-badge">☁ POWERED BY AZURE</div>
+      <div id="placeholder">
+        <div class="ph-circle"><div class="ph-icon">☁</div></div>
+        <div class="ph-text">NEURAVISION AZURE EDITION<br>CONFIGURE BACKEND URL BELOW<br>THEN INITIALIZE</div>
+        <button id="startBtn" onclick="initCamera()">⚡ INITIALIZE SYSTEM</button>
       </div>
+    </div>
+    <div class="camera-controls">
+      <button class="ctrl-btn cyan" onclick="openRegister()" id="regBtn" disabled>+ REGISTER FACE</button>
+      <button class="ctrl-btn green" onclick="toggleDetection()" id="detectBtn" disabled>⏸ PAUSE</button>
+      <button class="ctrl-btn red" onclick="clearLog()">⌫ CLEAR LOG</button>
+      <span class="face-count">FACES: <span id="faceCountDisplay">0</span></span>
+    </div>
+  </div>
 
-      <div class="video-container">
-        <div class="corner tl"></div>
-        <div class="corner tr"></div>
-        <div class="corner bl"></div>
-        <div class="corner br"></div>
-        <div class="scan-line" id="scanLine"></div>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
 
-        <video id="videoEl" autoplay muted playsinline></video>
-        <canvas id="overlayCanvas"></canvas>
-
-        <div class="hud-top-left" id="hudLeft">
-          SYS: ARMED<br>
-          ALGO: MTCNN<br>
-          RES: HD<br>
-          MODE: ACTIVE
+    <!-- Azure Config -->
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">BACKEND CONFIG</span></div>
+      <div class="panel-body">
+        <div class="config-row">
+          <span class="config-label">API URL</span>
+          <input class="config-input" id="cfgApiUrl" type="text" placeholder="https://neuravision-wdgf.onrender.com" value="https://neuravision-wdgf.onrender.com">
         </div>
-        <div class="hud-top-right" id="hudRight">
-          DETECT: ON<br>
-          TRACK: ON<br>
-          LIVENESS: ON<br>
-          LOG: ON
-        </div>
-
-        <!-- Placeholder before camera starts -->
-        <div id="placeholder">
-          <div class="ph-circle">
-            <div class="ph-icon">👁</div>
-          </div>
-          <div class="ph-text">
-            NEURAVISION FACE INTELLIGENCE<br>
-            AWAITING CAMERA INITIALIZATION<br>
-            MODELS: <span id="modelLoadPct">0%</span>
-          </div>
-          <button id="startBtn" onclick="initCamera()">⚡ INITIALIZE SYSTEM</button>
-          <div id="loadingMsg">LOADING AI MODELS...</div>
-        </div>
-      </div>
-
-      <div class="camera-controls">
-        <button class="ctrl-btn cyan" onclick="openRegister()" id="regBtn" disabled>+ REGISTER FACE</button>
-        <button class="ctrl-btn green" onclick="toggleDetection()" id="detectBtn" disabled>⏸ PAUSE</button>
-        <button class="ctrl-btn red" onclick="clearLog()">⌫ CLEAR LOG</button>
-        <span class="face-count">FACES DETECTED: <span id="faceCountDisplay">0</span></span>
+        <button class="save-btn" onclick="saveConfig()">SAVE &amp; TEST CONNECTION</button>
       </div>
     </div>
 
-    <!-- SIDEBAR -->
-    <div class="sidebar">
-
-      <!-- EMOTION ANALYSIS -->
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">EMOTION ANALYSIS</span>
-          <span class="panel-title" id="dominantEmotion">—</span>
-        </div>
-        <div class="panel-body">
-          <div class="emotion-bars">
-            <div class="emotion-row"><span class="emotion-name">HAPPY</span><div class="emotion-track"><div class="emotion-fill happy" id="e-happy" style="width:0%"></div></div><span class="emotion-pct" id="ep-happy" style="color:var(--neon-green)">0%</span></div>
-            <div class="emotion-row"><span class="emotion-name">NEUTRAL</span><div class="emotion-track"><div class="emotion-fill neutral" id="e-neutral" style="width:0%"></div></div><span class="emotion-pct" id="ep-neutral" style="color:var(--text-muted)">0%</span></div>
-            <div class="emotion-row"><span class="emotion-name">SAD</span><div class="emotion-track"><div class="emotion-fill sad" id="e-sad" style="width:0%"></div></div><span class="emotion-pct" id="ep-sad" style="color:#5588ff">0%</span></div>
-            <div class="emotion-row"><span class="emotion-name">ANGRY</span><div class="emotion-track"><div class="emotion-fill angry" id="e-angry" style="width:0%"></div></div><span class="emotion-pct" id="ep-angry" style="color:var(--neon-red)">0%</span></div>
-            <div class="emotion-row"><span class="emotion-name">SURPRISED</span><div class="emotion-track"><div class="emotion-fill surprised" id="e-surprised" style="width:0%"></div></div><span class="emotion-pct" id="ep-surprised" style="color:#ff88cc">0%</span></div>
-            <div class="emotion-row"><span class="emotion-name">FEARFUL</span><div class="emotion-track"><div class="emotion-fill fearful" id="e-fearful" style="width:0%"></div></div><span class="emotion-pct" id="ep-fearful" style="color:var(--neon-purple)">0%</span></div>
-            <div class="emotion-row"><span class="emotion-name">DISGUSTED</span><div class="emotion-track"><div class="emotion-fill disgusted" id="e-disgusted" style="width:0%"></div></div><span class="emotion-pct" id="ep-disgusted" style="color:var(--neon-amber)">0%</span></div>
-          </div>
+    <!-- Azure Services -->
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">AZURE SERVICES</span></div>
+      <div class="panel-body">
+        <div class="azure-services">
+          <div class="svc-pill checking" id="svc-api">⬡ FLASK API</div>
+          <div class="svc-pill checking" id="svc-faceapi">⬡ FACE API</div>
+          <div class="svc-pill checking" id="svc-mysql">⬡ AZURE MySQL</div>
+          <div class="svc-pill checking" id="svc-blob">⬡ BLOB STORE</div>
+          <div class="svc-pill checking" id="svc-signalr">⬡ SIGNALR</div>
+          <div class="svc-pill checking" id="svc-liveness">⬡ LIVENESS</div>
         </div>
       </div>
-
-      <!-- BIOMETRICS -->
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">BIOMETRIC ANALYSIS</span>
-        </div>
-        <div class="panel-body">
-          <div class="biometric-grid">
-            <div class="bio-card">
-              <div class="bio-label">EST. AGE</div>
-              <div class="bio-value" id="bioAge">--</div>
-            </div>
-            <div class="bio-card">
-              <div class="bio-label">GENDER</div>
-              <div class="bio-value" id="bioGender">--</div>
-            </div>
-            <div class="bio-card">
-              <div class="bio-label">LANDMARKS</div>
-              <div class="bio-value" id="bioLandmarks">--</div>
-            </div>
-            <div class="bio-card">
-              <div class="bio-label">CONFIDENCE</div>
-              <div class="bio-value" id="bioConf">--</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- LIVENESS CHECK -->
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">LIVENESS DETECTION</span>
-        </div>
-        <div class="panel-body liveness-panel">
-          <div class="live-indicator idle" id="livenessIndicator">
-            <div class="live-dot"></div>
-            <span id="livenessText">AWAITING FACE</span>
-          </div>
-          <div class="confidence-row">
-            <span class="conf-label">LIVE SCORE</span>
-            <div class="conf-bar-wrap"><div class="conf-bar" id="liveBar" style="width:0%"></div></div>
-            <span class="conf-pct" id="liveScore">0%</span>
-          </div>
-          <div style="font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--text-muted);letter-spacing:1px;line-height:1.8;" id="livenessDetails">
-            BLINK DETECT: —<br>
-            MOTION TRACK: —<br>
-            TEXTURE SCORE: —
-          </div>
-        </div>
-      </div>
-
-      <!-- NEURAL VIZ -->
-      <div class="panel">
-        <div class="panel-header"><span class="panel-title">NEURAL ACTIVITY</span></div>
-        <div class="neural-viz">
-          <canvas id="neuralCanvas"></canvas>
-        </div>
-      </div>
-
-      <!-- ATTENDANCE LOG -->
-      <div class="attendance-section">
-        <div class="panel-header">
-          <span class="panel-title">ATTENDANCE LOG</span>
-          <span class="panel-title" id="logCount">0 ENTRIES</span>
-        </div>
-        <div class="attendance-log" id="attendanceLog">
-          <div class="log-empty">NO ENTRIES YET<br>REGISTER &amp; DETECT FACES</div>
-        </div>
-      </div>
-
-      <!-- STATS FOOTER -->
-      <div class="stats-footer">
-        <div class="stat-cell">
-          <div class="stat-n" id="statTotal">0</div>
-          <div class="stat-l">TOTAL SCANS</div>
-        </div>
-        <div class="stat-cell">
-          <div class="stat-n" id="statRegistered">0</div>
-          <div class="stat-l">REGISTERED</div>
-        </div>
-        <div class="stat-cell">
-          <div class="stat-n" id="statPresent">0</div>
-          <div class="stat-l">PRESENT</div>
-        </div>
-      </div>
-
     </div>
-  </main>
+
+    <!-- Emotion Analysis -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">EMOTION ANALYSIS</span>
+        <span class="panel-title" id="dominantEmotion">—</span>
+      </div>
+      <div class="panel-body">
+        <div class="emotion-bars">
+          <div class="emotion-row"><span class="emotion-name">HAPPY</span><div class="emotion-track"><div class="emotion-fill ef-happy" id="e-happy" style="width:0%"></div></div><span class="emotion-pct" id="ep-happy" style="color:var(--neon-green)">0%</span></div>
+          <div class="emotion-row"><span class="emotion-name">NEUTRAL</span><div class="emotion-track"><div class="emotion-fill ef-neutral" id="e-neutral" style="width:0%"></div></div><span class="emotion-pct" id="ep-neutral" style="color:var(--text-muted)">0%</span></div>
+          <div class="emotion-row"><span class="emotion-name">SAD</span><div class="emotion-track"><div class="emotion-fill ef-sad" id="e-sad" style="width:0%"></div></div><span class="emotion-pct" id="ep-sad" style="color:#5588ff">0%</span></div>
+          <div class="emotion-row"><span class="emotion-name">ANGRY</span><div class="emotion-track"><div class="emotion-fill ef-angry" id="e-angry" style="width:0%"></div></div><span class="emotion-pct" id="ep-angry" style="color:var(--neon-red)">0%</span></div>
+          <div class="emotion-row"><span class="emotion-name">SURPRISED</span><div class="emotion-track"><div class="emotion-fill ef-surprised" id="e-surprised" style="width:0%"></div></div><span class="emotion-pct" id="ep-surprised" style="color:#ff88cc">0%</span></div>
+          <div class="emotion-row"><span class="emotion-name">FEARFUL</span><div class="emotion-track"><div class="emotion-fill ef-fearful" id="e-fearful" style="width:0%"></div></div><span class="emotion-pct" id="ep-fearful" style="color:var(--neon-purple)">0%</span></div>
+          <div class="emotion-row"><span class="emotion-name">DISGUSTED</span><div class="emotion-track"><div class="emotion-fill ef-disgusted" id="e-disgusted" style="width:0%"></div></div><span class="emotion-pct" id="ep-disgusted" style="color:var(--neon-amber)">0%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Biometrics -->
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">AZURE BIOMETRIC ANALYSIS</span></div>
+      <div class="panel-body">
+        <div class="biometric-grid">
+          <div class="bio-card"><div class="bio-label">EST. AGE</div><div class="bio-value" id="bioAge">--</div></div>
+          <div class="bio-card"><div class="bio-label">GENDER</div><div class="bio-value" id="bioGender">--</div></div>
+          <div class="bio-card"><div class="bio-label">CONFIDENCE</div><div class="bio-value" id="bioConf">--</div></div>
+          <div class="bio-card"><div class="bio-label">API MS</div><div class="bio-value" id="bioMs">--</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Liveness -->
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">AZURE LIVENESS DETECTION</span></div>
+      <div class="panel-body liveness-panel">
+        <div class="live-indicator idle" id="livenessIndicator">
+          <div class="live-dot"></div>
+          <span id="livenessText">AWAITING FACE</span>
+        </div>
+        <div class="conf-row">
+          <span class="conf-label">LIVE SCORE</span>
+          <div class="conf-bar-wrap"><div class="conf-bar" id="liveBar" style="width:0%"></div></div>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--neon-green);" id="liveScore">0%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Neural Activity -->
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">NEURAL ACTIVITY</span></div>
+      <div class="neural-viz"><canvas id="neuralCanvas"></canvas></div>
+    </div>
+
+    <!-- Attendance Log -->
+    <div class="attendance-section">
+      <div class="panel-header">
+        <span class="panel-title">
+          <span class="live-feed-dot off" id="signalrDot"></span>LIVE ATTENDANCE
+        </span>
+        <span class="panel-title" id="logCount">0 ENTRIES</span>
+      </div>
+      <div class="attendance-log" id="attendanceLog">
+        <div class="log-empty">NO ENTRIES<br>START CAMERA &amp; REGISTER FACES</div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-footer">
+      <div class="stat-cell"><div class="stat-n" id="statTotal">0</div><div class="stat-l">SCANS</div></div>
+      <div class="stat-cell"><div class="stat-n" id="statRegistered">0</div><div class="stat-l">REGISTERED</div></div>
+      <div class="stat-cell"><div class="stat-n" id="statPresent">0</div><div class="stat-l">PRESENT</div></div>
+    </div>
+  </div>
+</main>
 </div>
 
-<!-- REGISTER MODAL -->
+<!-- Register Modal -->
 <div id="registerModal">
   <div class="modal-box">
-    <div class="modal-title">REGISTER NEW FACE</div>
-    <canvas id="registerSnapshot" width="300" height="120"></canvas>
+    <div class="modal-title">REGISTER — AZURE FACE API</div>
+    <canvas id="registerSnapshot" width="300" height="110"></canvas>
     <div class="modal-field">
       <label class="modal-label">SUBJECT NAME</label>
-      <input class="modal-input" id="registerName" type="text" placeholder="Enter full name" maxlength="40">
+      <input class="modal-input" id="registerName" type="text" placeholder="Full name" maxlength="40">
     </div>
     <div class="modal-field">
       <label class="modal-label">SUBJECT ID</label>
       <input class="modal-input" id="registerId" type="text" placeholder="e.g. STU-001" maxlength="20">
     </div>
+    <div class="modal-field">
+      <label class="modal-label">DEPARTMENT</label>
+      <input class="modal-input" id="registerDept" type="text" placeholder="e.g. Computer Science" maxlength="60">
+    </div>
+    <div class="modal-status" id="modalStatus"></div>
     <div class="modal-actions">
-      <button class="modal-btn confirm" onclick="confirmRegister()">✓ REGISTER</button>
+      <button class="modal-btn confirm" onclick="confirmRegister()" id="confirmBtn">☁ REGISTER TO AZURE</button>
       <button class="modal-btn cancel" onclick="closeRegister()">✕ CANCEL</button>
     </div>
   </div>
 </div>
 
-<!-- TOAST -->
 <div id="toast"></div>
 
 <script>
-const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model/';
-let modelsLoaded = false;
-let cameraActive = false;
-let detecting = true;
-let registeredFaces = [];
-let attendanceLog = [];
-let statTotal = 0;
-let lastFrameTime = Date.now();
-let pendingDescriptor = null;
-let livenessFrames = [];
-let blinkCount = 0;
-let lastEyeOpen = true;
-let animFrame;
-let neuralCtx;
-let neuralWave = [];
+// ── Config ────────────────────────────────────────────────────────────────────
+let API_BASE = localStorage.getItem('nv_api_url') || 'https://neuravision-wdgf.onrender.com';
+let cameraActive = false, detecting = true;
+let attendanceLog = [], statTotal = 0;
+let lastFrameTime = Date.now(), frameSkip = 0;
+let signalrConn = null;
+let neuralCtx, neuralWave = [];
 
-// Clock
-function updateClock() {
-  const now = new Date();
-  document.getElementById('clockEl').textContent = now.toTimeString().slice(0,8);
+// Restore saved URL
+document.getElementById('cfgApiUrl').value = API_BASE;
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
+function updateClock(){ document.getElementById('clockEl').textContent = new Date().toTimeString().slice(0,8); }
+setInterval(updateClock, 1000); updateClock();
+
+// ── Config ────────────────────────────────────────────────────────────────────
+function saveConfig(){
+  API_BASE = document.getElementById('cfgApiUrl').value.trim().replace(/\/$/,'');
+  localStorage.setItem('nv_api_url', API_BASE);
+  checkBackend();
+  showToast('CONFIG SAVED');
 }
-setInterval(updateClock, 1000);
-updateClock();
 
-// Neural wave animation
-function initNeuralCanvas() {
+// ── Backend health check ──────────────────────────────────────────────────────
+async function checkBackend(){
+  setSvc('api','checking');
+  try {
+    const r = await fetch(`${API_BASE}/api/health`, {signal: AbortSignal.timeout(5000)});
+    const d = await r.json();
+    if(d.status === 'ok'){
+      setSvc('api','ok');
+      setbadge('backendStatus','◉ API ONLINE','green');
+      setSvc('faceapi', d.services?.face_api ? 'ok' : 'err');
+      setSvc('blob',    d.services?.blob     ? 'ok' : 'err');
+      setSvc('signalr', d.services?.signalr  ? 'ok' : 'err');
+      setSvc('mysql','ok');
+      setSvc('liveness','ok');
+      loadStats();
+      connectSignalR();
+    } else { setSvc('api','err'); }
+  } catch(e){ setSvc('api','err'); setbadge('backendStatus','✕ API OFFLINE','red'); }
+}
+
+function setSvc(id, state){
+  const el = document.getElementById('svc-'+id);
+  if(!el) return;
+  el.className = 'svc-pill ' + state;
+  const labels = {api:'FLASK API',faceapi:'FACE API',mysql:'AZURE MySQL',blob:'BLOB STORE',signalr:'SIGNALR',liveness:'LIVENESS'};
+  const icons  = {ok:'✓ ',err:'✗ ',checking:'⬡ '};
+  el.textContent = (icons[state]||'') + labels[id];
+}
+
+function setbadge(id, text, color){
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'badge ' + color;
+}
+
+// ── SignalR ───────────────────────────────────────────────────────────────────
+function connectSignalR(){
+  if(typeof signalR === 'undefined') return;
+  const hubUrl = `${API_BASE}/attendanceHub`;
+  signalrConn = new signalR.HubConnectionBuilder()
+    .withUrl(hubUrl)
+    .withAutomaticReconnect()
+    .build();
+
+  signalrConn.on('attendanceMarked', (data) => {
+    addLogEntry(data.name, new Date(data.timestamp).toTimeString().slice(0,8), true);
+    showToast(`☁ CLOUD LOG: ${data.name.toUpperCase()}`);
+  });
+
+  signalrConn.start()
+    .then(()=>{
+      setbadge('signalrStatus','◉ REALTIME ON','green');
+      document.getElementById('signalrDot').classList.remove('off');
+      setSvc('signalr','ok');
+    })
+    .catch(()=>{ /* SignalR optional */ });
+}
+
+// ── Load stats from API ───────────────────────────────────────────────────────
+async function loadStats(){
+  try {
+    const r = await fetch(`${API_BASE}/api/analytics/summary`);
+    const d = await r.json();
+    document.getElementById('statRegistered').textContent = d.total_registered || 0;
+    document.getElementById('statPresent').textContent    = d.present_today    || 0;
+  } catch(e){}
+  try {
+    const r = await fetch(`${API_BASE}/api/attendance/today`);
+    const d = await r.json();
+    if(d.records?.length){
+      d.records.forEach(rec => addLogEntry(rec.name, rec.first_seen?.slice(11,19), false));
+    }
+  } catch(e){}
+}
+
+// ── Neural canvas ─────────────────────────────────────────────────────────────
+function initNeuralCanvas(){
   const c = document.getElementById('neuralCanvas');
-  c.width = c.offsetWidth * window.devicePixelRatio;
-  c.height = 80 * window.devicePixelRatio;
-  c.style.height = '80px';
+  c.width = c.offsetWidth * devicePixelRatio;
+  c.height = 70 * devicePixelRatio;
   neuralCtx = c.getContext('2d');
   neuralWave = Array(80).fill(0);
-  animateNeural();
+  animNeural();
 }
-function animateNeural() {
-  if (!neuralCtx) return;
-  const c = document.getElementById('neuralCanvas');
-  const w = c.width, h = c.height;
+function animNeural(){
+  if(!neuralCtx) return;
+  const c = document.getElementById('neuralCanvas'), w=c.width, h=c.height;
   neuralCtx.clearRect(0,0,w,h);
-  // Shift wave
   neuralWave.shift();
-  const active = cameraActive && detecting;
-  neuralWave.push(active ? (Math.random() * 0.6 + 0.2) : (Math.random() * 0.05));
-  // Draw
-  neuralCtx.strokeStyle = active ? '#00f5ff' : 'rgba(0,245,255,0.2)';
+  neuralWave.push(cameraActive&&detecting ? Math.random()*.6+.2 : Math.random()*.05);
+  neuralCtx.strokeStyle = cameraActive ? '#00f5ff' : 'rgba(0,245,255,.2)';
   neuralCtx.lineWidth = 1.5;
   neuralCtx.beginPath();
-  neuralWave.forEach((v, i) => {
-    const x = (i / neuralWave.length) * w;
-    const y = h/2 + (v - 0.5) * h * 0.7;
-    i === 0 ? neuralCtx.moveTo(x, y) : neuralCtx.lineTo(x, y);
-  });
+  neuralWave.forEach((v,i)=>{ const x=(i/neuralWave.length)*w, y=h/2+(v-.5)*h*.7; i===0?neuralCtx.moveTo(x,y):neuralCtx.lineTo(x,y); });
   neuralCtx.stroke();
-  // Second wave
-  neuralCtx.strokeStyle = active ? 'rgba(0,255,136,0.4)' : 'rgba(0,255,136,0.05)';
-  neuralCtx.beginPath();
-  neuralWave.forEach((v, i) => {
-    const x = (i / neuralWave.length) * w;
-    const y = h/2 + Math.sin(i * 0.2 + Date.now() * 0.003) * h * 0.15 * (active ? 1 : 0.1);
-    i === 0 ? neuralCtx.moveTo(x, y) : neuralCtx.lineTo(x, y);
-  });
-  neuralCtx.stroke();
-  requestAnimationFrame(animateNeural);
+  requestAnimationFrame(animNeural);
 }
 
-// Load face-api models
-async function loadModels() {
-  const steps = [
-    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-    faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
-    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-    faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
-    faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL),
-  ];
-  let done = 0;
-  for (const s of steps) {
-    await s;
-    done++;
-    document.getElementById('modelLoadPct').textContent = Math.round(done/steps.length*100) + '%';
-  }
-  modelsLoaded = true;
-  document.getElementById('modelStatus').textContent = '◉ MODELS READY';
-  document.getElementById('modelStatus').style.borderColor = 'var(--neon-green)';
-  document.getElementById('modelStatus').style.color = 'var(--neon-green)';
-  document.getElementById('modelStatus').style.background = 'rgba(0,255,136,0.08)';
-  document.getElementById('startBtn').disabled = false;
-  document.getElementById('loadingMsg').style.display = 'none';
-  document.getElementById('startBtn').textContent = '⚡ INITIALIZE SYSTEM';
-}
-
-// Init camera
-async function initCamera() {
-  if (!modelsLoaded) {
-    showToast('MODELS STILL LOADING...', 'error'); return;
-  }
-  document.getElementById('startBtn').textContent = 'REQUESTING ACCESS...';
+// ── Camera ────────────────────────────────────────────────────────────────────
+async function initCamera(){
+  document.getElementById('startBtn').textContent = 'REQUESTING...';
   document.getElementById('startBtn').disabled = true;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720, facingMode: 'user' } });
+    const stream = await navigator.mediaDevices.getUserMedia({video:{width:1280,height:720,facingMode:'user'}});
     const video = document.getElementById('videoEl');
     video.srcObject = stream;
-    await new Promise(r => video.onloadedmetadata = r);
+    await new Promise(r=>video.onloadedmetadata=r);
     cameraActive = true;
     document.getElementById('placeholder').style.display = 'none';
-    document.getElementById('cameraStatus').textContent = '◉ CAMERA ONLINE';
-    document.getElementById('cameraStatus').style.borderColor = 'var(--neon-green)';
-    document.getElementById('cameraStatus').style.color = 'var(--neon-green)';
-    document.getElementById('cameraStatus').style.background = 'rgba(0,255,136,0.08)';
+    setbadge('cameraStatus','◉ CAM ONLINE','green');
     document.getElementById('regBtn').disabled = false;
     document.getElementById('detectBtn').disabled = false;
-    // Setup canvas
     const canvas = document.getElementById('overlayCanvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    runDetection();
-    showToast('SYSTEM INITIALIZED — FACE DETECTION ACTIVE');
-  } catch(e) {
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    runDetectionLoop();
+    showToast('SYSTEM ONLINE — AZURE FACE API ACTIVE');
+  } catch(e){
     document.getElementById('startBtn').disabled = false;
     document.getElementById('startBtn').textContent = '⚡ INITIALIZE SYSTEM';
     showToast('CAMERA ACCESS DENIED', 'error');
   }
 }
 
-// Main detection loop
-async function runDetection() {
-  if (!cameraActive) return;
-  const video = document.getElementById('videoEl');
+// ── Detection loop — sends frames to Azure backend ────────────────────────────
+function runDetectionLoop(){
+  const video  = document.getElementById('videoEl');
   const canvas = document.getElementById('overlayCanvas');
-  const ctx = canvas.getContext('2d');
+  const ctx    = canvas.getContext('2d');
+  const offscreen = document.createElement('canvas');
+  offscreen.width = 640; offscreen.height = 360;
+  const offCtx = offscreen.getContext('2d');
 
-  const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 });
+  async function loop(){
+    if(!cameraActive){ requestAnimationFrame(loop); return; }
 
-  async function detect() {
-    if (!detecting) { requestAnimationFrame(detect); return; }
-
-    // FPS
     const now = Date.now();
-    const fps = Math.round(1000 / (now - lastFrameTime));
+    document.getElementById('fpsDisplay').textContent = 'FPS: ' + Math.round(1000/(now-lastFrameTime));
     lastFrameTime = now;
-    document.getElementById('fpsDisplay').textContent = 'FPS: ' + fps;
     statTotal++;
     document.getElementById('statTotal').textContent = statTotal;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    const detections = await faceapi
-      .detectAllFaces(video, opts)
-      .withFaceLandmarks(true)
-      .withFaceExpressions()
-      .withAgeAndGender()
-      .withFaceDescriptors();
+    if(detecting && frameSkip++ % 3 === 0){
+      // Capture frame → base64
+      offCtx.drawImage(video, 0,0, offscreen.width, offscreen.height);
+      const b64 = offscreen.toDataURL('image/jpeg', 0.7).split(',')[1];
 
-    const displayed = faceapi.resizeResults(detections, { width: canvas.width, height: canvas.height });
-    document.getElementById('faceCountDisplay').textContent = displayed.length;
-
-    if (displayed.length > 0) {
-      const det = displayed[0];
-      updateEmotions(det.expressions);
-      updateBiometrics(det);
-      updateLiveness(det);
-      checkRecognition(det, ctx, canvas);
-
-      // Draw for each face
-      displayed.forEach(d => drawFaceOverlay(ctx, d, canvas));
-    } else {
-      resetPanels();
+      try {
+        const resp = await fetch(`${API_BASE}/api/detect/frame`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({frame_b64: b64, cam_id:'CAM-01'}),
+          signal: AbortSignal.timeout(4000)
+        });
+        if(resp.ok){
+          const data = await resp.json();
+          document.getElementById('faceCountDisplay').textContent = data.face_count||0;
+          document.getElementById('bioMs').textContent = (data.processing_ms||0)+'ms';
+          if(data.faces?.length){
+            updatePanels(data.faces[0]);
+            data.faces.forEach(f => drawFace(ctx, f, canvas, video));
+            if(data.faces[0].logged){
+              addLogEntry(data.faces[0].name, new Date().toTimeString().slice(0,8), true);
+            }
+          } else { resetPanels(); }
+        }
+      } catch(e){ /* API timeout — skip frame */ }
     }
-
-    requestAnimationFrame(detect);
+    requestAnimationFrame(loop);
   }
-  detect();
+  loop();
 }
 
-function drawFaceOverlay(ctx, det, canvas) {
-  const box = det.detection.box;
-  const { x, y, width, height } = box;
+function drawFace(ctx, face, canvas, video){
+  const scaleX = canvas.width / 640;
+  const scaleY = canvas.height / 360;
+  const [bx,by,bw,bh] = (face.box||[]).map((v,i)=>v*(i%2===0?scaleX:scaleY));
+  const known = face.subject_id !== 'UNKNOWN';
+  const color = known ? '#00ff88' : '#ff0055';
 
-  // Recognize
-  let label = 'UNKNOWN';
-  let labelColor = '#ff0055';
-  if (registeredFaces.length > 0 && det.descriptor) {
-    const faceMatcher = new faceapi.FaceMatcher(
-      registeredFaces.map(f => new faceapi.LabeledFaceDescriptors(f.name, [f.descriptor])),
-      0.55
-    );
-    const match = faceMatcher.findBestMatch(det.descriptor);
-    if (match.label !== 'unknown') {
-      label = match.label.toUpperCase();
-      labelColor = '#00ff88';
-      logAttendance(match.label);
-    }
-  }
+  // Box
+  ctx.strokeStyle = color; ctx.lineWidth = 2;
+  ctx.strokeRect(bx, by, bw, bh);
 
-  // Draw box
-  ctx.strokeStyle = labelColor;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(x, y, width, height);
-
-  // Corner accents
-  const cs = 20;
-  ctx.strokeStyle = '#00f5ff';
-  ctx.lineWidth = 3;
-  [[x,y],[x+width,y],[x,y+height],[x+width,y+height]].forEach(([cx,cy],i) => {
+  // Corners
+  [[bx,by],[bx+bw,by],[bx,by+bh],[bx+bw,by+bh]].forEach(([cx,cy],i)=>{
+    ctx.strokeStyle='#00f5ff'; ctx.lineWidth=3;
+    const s=20;
     ctx.beginPath();
-    ctx.moveTo(cx + (i%2===0?0:-(cs)), cy);
-    ctx.lineTo(cx + (i%2===0?cs:0), cy);
-    ctx.moveTo(cx, cy + (i<2?cs:-cs));
-    ctx.lineTo(cx, cy + (i<2?0:0));
+    ctx.moveTo(cx+(i%2===0?0:-s),cy); ctx.lineTo(cx+(i%2===0?s:0),cy);
+    ctx.moveTo(cx,cy+(i<2?s:-s)); ctx.lineTo(cx,cy+(i<2?0:0));
     ctx.stroke();
   });
 
-  // Label bar
-  ctx.fillStyle = 'rgba(0,0,0,0.75)';
-  ctx.fillRect(x, y - 26, width, 26);
-  ctx.fillStyle = labelColor;
-  ctx.font = 'bold 12px "Share Tech Mono"';
-  ctx.fillText(label, x + 8, y - 8);
+  // Label
+  ctx.fillStyle='rgba(0,0,0,.8)'; ctx.fillRect(bx,by-26,bw,26);
+  ctx.fillStyle=color; ctx.font='bold 11px "Share Tech Mono"';
+  ctx.fillText(face.name?.toUpperCase()||'UNKNOWN', bx+6, by-9);
+  ctx.fillStyle='rgba(0,245,255,.8)'; ctx.font='10px "Share Tech Mono"';
+  ctx.fillText(Math.round(face.confidence*100)+'%', bx+bw-36, by-9);
 
-  // Conf score
-  const conf = Math.round(det.detection.score * 100);
-  ctx.fillStyle = 'rgba(0,245,255,0.7)';
-  ctx.font = '10px "Share Tech Mono"';
-  ctx.fillText(conf + '%', x + width - 36, y - 8);
-
-  // Landmarks dots
-  if (det.landmarks) {
-    det.landmarks.positions.forEach(pt => {
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, 1.5, 0, 2*Math.PI);
-      ctx.fillStyle = 'rgba(0,245,255,0.5)';
-      ctx.fill();
-    });
+  // Emotion bar
+  if(face.emotion){
+    ctx.fillStyle='rgba(0,0,0,.7)'; ctx.fillRect(bx,by+bh,bw,20);
+    ctx.fillStyle='#ffaa00'; ctx.font='10px "Share Tech Mono"';
+    ctx.fillText(face.emotion.toUpperCase(), bx+4, by+bh+14);
   }
 
-  // Emotion label below box
-  if (det.expressions) {
-    const top = Object.entries(det.expressions).sort((a,b) => b[1]-a[1])[0];
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(x, y+height, width, 20);
-    ctx.fillStyle = '#ffaa00';
-    ctx.font = '10px "Share Tech Mono"';
-    ctx.fillText(top[0].toUpperCase() + ' ' + Math.round(top[1]*100) + '%', x+4, y+height+14);
+  // Cloud indicator
+  if(face.logged){
+    ctx.fillStyle='rgba(0,245,255,.9)'; ctx.font='10px "Share Tech Mono"';
+    ctx.fillText('☁ LOGGED', bx+bw-72, by+bh+14);
   }
 }
 
-function updateEmotions(expressions) {
+// ── Panel updates ─────────────────────────────────────────────────────────────
+function updatePanels(face){
+  // Emotions — from Azure Face API
+  const em = face.emotions || {};
   const keys = ['happy','neutral','sad','angry','surprised','fearful','disgusted'];
-  let topKey = 'neutral', topVal = 0;
-  keys.forEach(k => {
-    const pct = Math.round((expressions[k]||0)*100);
-    document.getElementById('e-'+k).style.width = pct+'%';
-    document.getElementById('ep-'+k).textContent = pct+'%';
-    if ((expressions[k]||0) > topVal) { topVal=(expressions[k]||0); topKey=k; }
+  let topK='neutral', topV=0;
+  keys.forEach(k=>{
+    const pct = Math.round((em[k]||0)*100);
+    document.getElementById('e-'+k).style.width=pct+'%';
+    document.getElementById('ep-'+k).textContent=pct+'%';
+    if((em[k]||0)>topV){topV=em[k]||0;topK=k;}
   });
-  document.getElementById('dominantEmotion').textContent = topKey.toUpperCase();
-}
+  document.getElementById('dominantEmotion').textContent=topK.toUpperCase();
 
-function updateBiometrics(det) {
-  document.getElementById('bioAge').textContent = Math.round(det.age || 0);
-  const gender = (det.gender || '').toUpperCase();
-  const gEl = document.getElementById('bioGender');
-  gEl.textContent = gender.slice(0,1) || '--';
-  gEl.className = 'bio-value ' + (gender === 'MALE' ? 'gender-m' : gender === 'FEMALE' ? 'gender-f' : '');
-  document.getElementById('bioLandmarks').textContent = det.landmarks ? det.landmarks.positions.length : '--';
-  document.getElementById('bioConf').textContent = Math.round((det.detection?.score||0)*100) + '%';
-}
+  // Biometrics
+  document.getElementById('bioAge').textContent = face.age ? Math.round(face.age) : '--';
+  document.getElementById('bioGender').textContent = face.gender ? face.gender.slice(0,1).toUpperCase() : '--';
+  document.getElementById('bioConf').textContent = Math.round((face.confidence||0)*100)+'%';
 
-function updateLiveness(det) {
-  // Pseudo liveness: check blink via eye landmarks, motion
-  const score = simulateLivenessScore(det);
-  const pct = Math.round(score * 100);
-  document.getElementById('liveBar').style.width = pct + '%';
-  document.getElementById('liveScore').textContent = pct + '%';
+  // Liveness
+  const liv = Math.round((face.liveness||0)*100);
+  document.getElementById('liveBar').style.width = liv+'%';
+  document.getElementById('liveScore').textContent = liv+'%';
   const ind = document.getElementById('livenessIndicator');
   const txt = document.getElementById('livenessText');
-  if (pct > 60) {
-    ind.className = 'live-indicator live';
-    txt.textContent = 'LIVE SUBJECT DETECTED';
-    document.getElementById('liveBar').style.background = 'var(--neon-green)';
-    document.getElementById('liveScore').style.color = 'var(--neon-green)';
-  } else if (pct > 30) {
-    ind.className = 'live-indicator idle';
-    txt.textContent = 'ANALYZING LIVENESS...';
-    document.getElementById('liveBar').style.background = 'var(--neon-amber)';
-    document.getElementById('liveScore').style.color = 'var(--neon-amber)';
-  } else {
-    ind.className = 'live-indicator spoof';
-    txt.textContent = 'POSSIBLE SPOOF DETECTED';
-    document.getElementById('liveBar').style.background = 'var(--neon-red)';
-    document.getElementById('liveScore').style.color = 'var(--neon-red)';
-  }
-  document.getElementById('livenessDetails').innerHTML =
-    `BLINK DETECT: ${blinkCount > 0 ? 'YES ('+blinkCount+')' : 'MONITORING'}<br>MOTION TRACK: ACTIVE<br>TEXTURE SCORE: ${pct > 50 ? 'REAL' : 'LOW'}`;
+  if(liv>60){ ind.className='live-indicator live'; txt.textContent='LIVE SUBJECT DETECTED'; }
+  else if(liv>30){ ind.className='live-indicator idle'; txt.textContent='ANALYSING LIVENESS...'; }
+  else { ind.className='live-indicator spoof'; txt.textContent='POSSIBLE SPOOF'; }
 }
 
-function simulateLivenessScore(det) {
-  // Real liveness uses eye aspect ratio + texture + motion
-  // Here we use a heuristic: detection confidence + landmark variance + random noise
-  livenessFrames.push(Math.random() * 0.2 + 0.65);
-  if (livenessFrames.length > 30) livenessFrames.shift();
-  const avg = livenessFrames.reduce((a,b) => a+b, 0) / livenessFrames.length;
-  const conf = det.detection?.score || 0.7;
-  return Math.min(0.99, avg * 0.5 + conf * 0.5);
-}
-
-function checkRecognition(det, ctx, canvas) {
-  // Already handled in drawFaceOverlay
-}
-
-function logAttendance(name) {
-  const alreadyIn = attendanceLog.find(e => e.name === name && e.status === 'IN' && Date.now() - e.ts < 10000);
-  if (alreadyIn) return;
-  const now = new Date();
-  const time = now.toTimeString().slice(0,8);
-  const entry = { name, time, status: 'IN', ts: Date.now() };
-  attendanceLog.unshift(entry);
-  renderLog();
-}
-
-function renderLog() {
-  const container = document.getElementById('attendanceLog');
-  if (attendanceLog.length === 0) {
-    container.innerHTML = '<div class="log-empty">NO ENTRIES YET<br>REGISTER &amp; DETECT FACES</div>';
-    document.getElementById('logCount').textContent = '0 ENTRIES';
-    document.getElementById('statPresent').textContent = '0';
-    return;
-  }
-  const seen = new Set();
-  container.innerHTML = attendanceLog.map(e => {
-    seen.add(e.name);
-    return `<div class="log-entry">
-      <span class="log-time">${e.time}</span>
-      <span class="log-name">${e.name}</span>
-      <span class="log-status in">IN</span>
-    </div>`;
-  }).join('');
-  document.getElementById('logCount').textContent = attendanceLog.length + ' ENTRIES';
-  document.getElementById('statPresent').textContent = seen.size;
-}
-
-function resetPanels() {
-  ['happy','neutral','sad','angry','surprised','fearful','disgusted'].forEach(k => {
-    document.getElementById('e-'+k).style.width = '0%';
-    document.getElementById('ep-'+k).textContent = '0%';
+function resetPanels(){
+  ['happy','neutral','sad','angry','surprised','fearful','disgusted'].forEach(k=>{
+    document.getElementById('e-'+k).style.width='0%';
+    document.getElementById('ep-'+k).textContent='0%';
   });
-  document.getElementById('dominantEmotion').textContent = '—';
-  document.getElementById('bioAge').textContent = '--';
-  document.getElementById('bioGender').textContent = '--';
-  document.getElementById('bioLandmarks').textContent = '--';
-  document.getElementById('bioConf').textContent = '--';
-  document.getElementById('livenessIndicator').className = 'live-indicator idle';
-  document.getElementById('livenessText').textContent = 'AWAITING FACE';
-  document.getElementById('liveBar').style.width = '0%';
-  document.getElementById('liveScore').textContent = '0%';
+  document.getElementById('dominantEmotion').textContent='—';
+  ['bioAge','bioGender','bioConf'].forEach(id=>document.getElementById(id).textContent='--');
+  document.getElementById('livenessIndicator').className='live-indicator idle';
+  document.getElementById('livenessText').textContent='AWAITING FACE';
+  document.getElementById('liveBar').style.width='0%';
+  document.getElementById('liveScore').textContent='0%';
+  document.getElementById('faceCountDisplay').textContent='0';
 }
 
-function toggleDetection() {
-  detecting = !detecting;
-  document.getElementById('detectBtn').textContent = detecting ? '⏸ PAUSE' : '▶ RESUME';
-  document.getElementById('detectBtn').className = detecting ? 'ctrl-btn green' : 'ctrl-btn cyan';
-}
-
-function clearLog() {
-  attendanceLog = [];
+// ── Attendance log ────────────────────────────────────────────────────────────
+const seenNames = new Set();
+function addLogEntry(name, time, fromCloud){
+  if(!name||name==='Unknown') return;
+  const key = name+'_'+new Date().toDateString();
+  if(seenNames.has(key)) return;
+  seenNames.add(key);
+  attendanceLog.unshift({name,time,fromCloud});
   renderLog();
-  showToast('LOG CLEARED');
 }
 
-// Register flow
-let snapDescriptor = null;
-function openRegister() {
-  if (!cameraActive) { showToast('START CAMERA FIRST', 'error'); return; }
-  const video = document.getElementById('videoEl');
-  const snap = document.getElementById('registerSnapshot');
-  const sctx = snap.getContext('2d');
-  snap.width = video.videoWidth;
-  snap.height = Math.round(video.videoWidth * 0.4);
-  sctx.translate(snap.width, 0);
-  sctx.scale(-1, 1);
-  sctx.drawImage(video, 0, 0, snap.width, snap.height);
-  document.getElementById('registerName').value = '';
-  document.getElementById('registerId').value = '';
+function renderLog(){
+  const el = document.getElementById('attendanceLog');
+  if(!attendanceLog.length){ el.innerHTML='<div class="log-empty">NO ENTRIES<br>START CAMERA &amp; REGISTER FACES</div>'; document.getElementById('logCount').textContent='0 ENTRIES'; document.getElementById('statPresent').textContent='0'; return; }
+  el.innerHTML = attendanceLog.map(e=>`
+    <div class="log-entry">
+      <span class="log-time">${e.time||''}</span>
+      <span class="log-name">${e.name}</span>
+      ${e.fromCloud?'<span class="log-cloud">☁</span>':''}
+      <span class="log-status in">IN</span>
+    </div>`).join('');
+  document.getElementById('logCount').textContent=attendanceLog.length+' ENTRIES';
+  document.getElementById('statPresent').textContent=new Set(attendanceLog.map(e=>e.name)).size;
+}
+
+function clearLog(){ attendanceLog=[]; seenNames.clear(); renderLog(); showToast('LOG CLEARED'); }
+function toggleDetection(){ detecting=!detecting; document.getElementById('detectBtn').textContent=detecting?'⏸ PAUSE':'▶ RESUME'; document.getElementById('detectBtn').className=detecting?'ctrl-btn green':'ctrl-btn cyan'; }
+
+// ── Register ──────────────────────────────────────────────────────────────────
+function openRegister(){
+  if(!cameraActive){showToast('START CAMERA FIRST','error');return;}
+  const video=document.getElementById('videoEl');
+  const snap=document.getElementById('registerSnapshot');
+  const sc=snap.getContext('2d');
+  snap.width=video.videoWidth; snap.height=Math.round(video.videoWidth*0.37);
+  sc.translate(snap.width,0); sc.scale(-1,1);
+  sc.drawImage(video,0,0,snap.width,snap.height);
+  ['registerName','registerId','registerDept'].forEach(id=>document.getElementById(id).value='');
+  const ms=document.getElementById('modalStatus'); ms.style.display='none';
   document.getElementById('registerModal').classList.add('open');
-  // Capture descriptor from current frame
-  captureDescriptor(video);
 }
 
-async function captureDescriptor(video) {
-  const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 });
-  const det = await faceapi.detectSingleFace(video, opts).withFaceLandmarks(true).withFaceDescriptor();
-  snapDescriptor = det ? det.descriptor : null;
-}
+function closeRegister(){ document.getElementById('registerModal').classList.remove('open'); }
 
-function closeRegister() {
-  document.getElementById('registerModal').classList.remove('open');
-  snapDescriptor = null;
-}
-
-function confirmRegister() {
+async function confirmRegister(){
   const name = document.getElementById('registerName').value.trim();
-  const id = document.getElementById('registerId').value.trim();
-  if (!name) { showToast('ENTER A NAME', 'error'); return; }
-  if (!snapDescriptor) { showToast('NO FACE DETECTED IN FRAME', 'error'); return; }
-  registeredFaces.push({ name, id, descriptor: snapDescriptor });
-  document.getElementById('statRegistered').textContent = registeredFaces.length;
-  closeRegister();
-  showToast('FACE REGISTERED: ' + name.toUpperCase());
+  const sid  = document.getElementById('registerId').value.trim().toUpperCase();
+  const dept = document.getElementById('registerDept').value.trim();
+  if(!name||!sid){showToast('FILL ALL FIELDS','error');return;}
+
+  const snap = document.getElementById('registerSnapshot');
+  const b64  = snap.toDataURL('image/jpeg',.85).split(',')[1];
+
+  const btn=document.getElementById('confirmBtn');
+  btn.textContent='UPLOADING TO AZURE...'; btn.disabled=true;
+  const ms=document.getElementById('modalStatus'); ms.style.display='block';
+  ms.className='modal-status ok'; ms.textContent='SENDING TO AZURE FACE API...';
+
+  try {
+    const r = await fetch(`${API_BASE}/api/subjects/register`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({subject_id:sid,name,department:dept,image_b64:b64})
+    });
+    const d = await r.json();
+    if(r.ok){
+      ms.textContent='✓ REGISTERED TO AZURE: '+d.person_id?.slice(0,8)+'...';
+      document.getElementById('statRegistered').textContent =
+        parseInt(document.getElementById('statRegistered').textContent||0)+1;
+      setTimeout(closeRegister, 1500);
+      showToast('☁ REGISTERED: '+name.toUpperCase());
+    } else {
+      ms.className='modal-status err'; ms.textContent='✗ '+d.error;
+    }
+  } catch(e){
+    ms.className='modal-status err'; ms.textContent='✗ API UNREACHABLE';
+  }
+  btn.textContent='☁ REGISTER TO AZURE'; btn.disabled=false;
 }
 
-function showToast(msg, type='') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'show ' + (type==='error' ? 'error' : '');
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.className = '', 2500);
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg, type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='show'+(type==='error'?' error':'');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.className='',2800);
 }
 
-// Boot sequence
-window.addEventListener('load', () => {
+// ── Boot ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load',()=>{
   initNeuralCanvas();
-  document.getElementById('loadingMsg').style.display = 'block';
-  document.getElementById('startBtn').disabled = true;
-  loadModels();
+  checkBackend();
+  setInterval(checkBackend, 30000);  // re-check every 30s
 });
-
-window.addEventListener('resize', () => {
-  const c = document.getElementById('neuralCanvas');
-  if (c) { c.width = c.offsetWidth * window.devicePixelRatio; }
-});
+window.addEventListener('resize',()=>{ const c=document.getElementById('neuralCanvas'); if(c) c.width=c.offsetWidth*devicePixelRatio; });
 </script>
 </body>
 </html>
