@@ -2,7 +2,7 @@
 NEURAVISION — Flask Backend (PostgreSQL Edition)
 Run with: python app.py
 """
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS
 from config import Config
 from database import init_db, release_conn
@@ -22,25 +22,38 @@ logging.basicConfig(
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
-    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=False)
+
+    CORS(app,
+         resources={r"/*": {"origins": "*"}},
+         supports_credentials=False,
+         allow_headers="*",
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])
+
+    @app.before_request
+    def handle_preflight():
+        if request.method == "OPTIONS":
+            from flask import Response
+            resp = Response()
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            resp.headers['Access-Control-Allow-Headers'] = '*'
+            resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
+            return resp
 
     @app.after_request
     def add_cors_headers(response):
         response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        response.headers['Access-Control-Allow-Headers'] = '*'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
         return response
 
     init_db(app)
 
-    # Load face encodings from DB on startup
     with app.app_context():
         try:
             reload_encodings()
         except Exception as e:
             logging.warning(f"Could not load encodings on startup: {e}")
 
-    # Release DB connection after each request
     app.teardown_appcontext(release_conn)
 
     app.register_blueprint(subjects_bp,    url_prefix="/api/subjects")
