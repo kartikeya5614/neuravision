@@ -191,7 +191,7 @@
 <div class="app">
 
   <header>
-    <div class="logo">
+    <div class="logo" id="logoClickArea" style="cursor:pointer;" title="">
       <div class="logo-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="#00f5ff" stroke-width="1.5" width="22" height="22">
           <circle cx="12" cy="8" r="4"/>
@@ -249,24 +249,26 @@
 
     <div class="sidebar">
 
-      <div class="panel">
-        <div class="panel-header"><span class="panel-title">CLOUD BACKEND CONFIG</span></div>
-        <div class="panel-body">
-          <div class="config-row">
-            <span class="config-label">API URL</span>
-            <input class="config-input" id="cfgApiUrl" type="text" placeholder="https://your-app.onrender.com" value="https://neuravision-wdgf.onrender.com">
+      <div id="adminPanels" style="display:none;">
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">CLOUD BACKEND CONFIG</span></div>
+          <div class="panel-body">
+            <div class="config-row">
+              <span class="config-label">API URL</span>
+              <input class="config-input" id="cfgApiUrl" type="text" placeholder="https://your-app.onrender.com" value="https://neuravision-wdgf.onrender.com">
+            </div>
+            <button class="save-btn" onclick="saveConfig()">SAVE &amp; TEST CONNECTION</button>
+            <div class="hint-text">AI runs in your browser. Cloud is used only to save and read attendance records.</div>
           </div>
-          <button class="save-btn" onclick="saveConfig()">SAVE &amp; TEST CONNECTION</button>
-          <div class="hint-text">AI runs in your browser. Cloud is used only to save and read attendance records.</div>
         </div>
-      </div>
 
-      <div class="panel">
-        <div class="panel-header"><span class="panel-title">SYSTEM SERVICES</span></div>
-        <div class="panel-body">
-          <div class="services-grid">
-            <div class="svc-pill checking" id="svc-faceapi">⬡ FACE-API.JS</div>
-            <div class="svc-pill checking" id="svc-cloud">⬡ CLOUD DB</div>
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">SYSTEM SERVICES</span></div>
+          <div class="panel-body">
+            <div class="services-grid">
+              <div class="svc-pill checking" id="svc-faceapi">⬡ FACE-API.JS</div>
+              <div class="svc-pill checking" id="svc-cloud">⬡ CLOUD DB</div>
+            </div>
           </div>
         </div>
       </div>
@@ -813,6 +815,21 @@ function showToast(msg, type=''){
   t.textContent = msg; t.className = 'show' + (type==='error'?' error':'');
   clearTimeout(t._timer); t._timer = setTimeout(()=>t.className='', 2800);
 }
+
+// ── Secret admin panel toggle — click logo 5x within 3s to reveal config ──────
+let logoClicks = 0, logoClickTimer = null;
+document.getElementById('logoClickArea').addEventListener('click', () => {
+  logoClicks++;
+  clearTimeout(logoClickTimer);
+  logoClickTimer = setTimeout(() => { logoClicks = 0; }, 3000);
+  if(logoClicks >= 5){
+    logoClicks = 0;
+    const panels = document.getElementById('adminPanels');
+    const isHidden = panels.style.display === 'none';
+    panels.style.display = isHidden ? 'block' : 'none';
+    showToast(isHidden ? 'ADMIN PANEL UNLOCKED' : 'ADMIN PANEL HIDDEN');
+  }
+});
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
