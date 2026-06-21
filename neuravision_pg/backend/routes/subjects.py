@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 @subjects_bp.route("/", methods=["GET"])
 def list_subjects():
     rows = query_all(
-        "SELECT id, subject_id, name, department, email, role, registered_at, is_active "
+        "SELECT id, subject_id, name, department, email, role, photo_url, registered_at, is_active "
         "FROM subjects ORDER BY registered_at DESC"
     )
     for r in rows:
@@ -29,11 +29,12 @@ def register_subject():
     The actual face descriptor is captured and stored client-side
     by face-api.js in the browser session.
 
-    POST JSON: { "subject_id": "STU-001", "name": "...", "department": "...", "email": "...", "role": "..." }
+    POST JSON: { "subject_id": "STU-001", "name": "...", "department": "...", "email": "...", "role": "...", "photo_url": "..." }
     """
     data = request.get_json(force=True)
     sid  = (data.get("subject_id") or "").strip().upper()
     name = (data.get("name") or "").strip()
+    photo_url = (data.get("photo_url") or "").strip() or None
 
     if not sid or not name:
         return jsonify({"error": "subject_id and name are required"}), 400
@@ -43,15 +44,16 @@ def register_subject():
         # Already exists — treat as success (idempotent), useful since
         # browser-side registration may re-fire across sessions.
         execute(
-            "UPDATE subjects SET name = %s, department = %s, email = %s, role = %s WHERE subject_id = %s",
-            (name, data.get("department",""), data.get("email",""), data.get("role","student"), sid)
+            "UPDATE subjects SET name = %s, department = %s, email = %s, role = %s, "
+            "photo_url = COALESCE(%s, photo_url) WHERE subject_id = %s",
+            (name, data.get("department",""), data.get("email",""), data.get("role","student"), photo_url, sid)
         )
         return jsonify({"message": "Subject updated", "subject_id": sid}), 200
 
     execute(
-        """INSERT INTO subjects (subject_id, name, department, email, role)
-           VALUES (%s, %s, %s, %s, %s)""",
-        (sid, name, data.get("department",""), data.get("email",""), data.get("role","student"))
+        """INSERT INTO subjects (subject_id, name, department, email, role, photo_url)
+           VALUES (%s, %s, %s, %s, %s, %s)""",
+        (sid, name, data.get("department",""), data.get("email",""), data.get("role","student"), photo_url)
     )
     log.info(f"Registered: {name} ({sid})")
     return jsonify({"message": "Subject registered successfully", "subject_id": sid}), 201
