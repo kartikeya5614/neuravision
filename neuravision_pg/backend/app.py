@@ -1,14 +1,16 @@
 """
-NEURAVISION — Flask Backend (PostgreSQL Edition)
+NEURAVISION — Flask Backend (Hybrid Edition)
+Lightweight JSON-only API. No image processing, no DeepFace, no TensorFlow.
+All face AI runs client-side in the browser via face-api.js.
+This keeps memory usage tiny — safe for free-tier hosting (Render free = 512MB).
+
 Run with: python app.py
 """
 from flask import Flask, request
 from flask_cors import CORS
 from config import Config
 from database import init_db, release_conn
-from utils.face_engine import reload_encodings
 from routes.subjects   import subjects_bp
-from routes.detection  import detection_bp
 from routes.attendance import attendance_bp
 from routes.analytics  import analytics_bp
 import logging
@@ -47,23 +49,15 @@ def create_app():
         return response
 
     init_db(app)
-
-    with app.app_context():
-        try:
-            reload_encodings()
-        except Exception as e:
-            logging.warning(f"Could not load encodings on startup: {e}")
-
     app.teardown_appcontext(release_conn)
 
     app.register_blueprint(subjects_bp,    url_prefix="/api/subjects")
-    app.register_blueprint(detection_bp,   url_prefix="/api/detect")
     app.register_blueprint(attendance_bp,  url_prefix="/api/attendance")
     app.register_blueprint(analytics_bp,   url_prefix="/api/analytics")
 
     @app.route("/api/health")
     def health():
-        return {"status": "ok", "system": "NEURAVISION", "db": "PostgreSQL"}
+        return {"status": "ok", "system": "NEURAVISION", "db": "PostgreSQL", "mode": "hybrid-client-ai"}
 
     return app
 
@@ -72,7 +66,7 @@ app = create_app()
 
 if __name__ == "__main__":
     print("\n" + "="*50)
-    print("  NEURAVISION is running!")
+    print("  NEURAVISION (Hybrid) is running!")
     print("  Open: http://localhost:5000/api/health")
     print("="*50 + "\n")
     app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
