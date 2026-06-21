@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEURAVISION — Azure Face Intelligence</title>
+<title>NEURAVISION — Face Intelligence</title>
 <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@7.0.12/dist/browser/signalr.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
@@ -192,7 +192,7 @@
       </div>
       <div>
         <div class="logo-text">NEURAVISION</div>
-        <div class="logo-sub">AZURE FACE INTELLIGENCE v3.0 — CLOUD EDITION</div>
+        <div class="logo-sub">FACE INTELLIGENCE SYSTEM — CLOUD EDITION</div>
       </div>
     </div>
   </div>
@@ -217,12 +217,12 @@
       <div class="scan-line"></div>
       <video id="videoEl" autoplay muted playsinline></video>
       <canvas id="overlayCanvas"></canvas>
-      <div class="hud-tl" id="hudLeft">SYS: AZURE<br>ENGINE: FACE API<br>CLOUD: ACTIVE<br>MODE: LIVE</div>
+      <div class="hud-tl" id="hudLeft">SYS: ONLINE<br>ENGINE: DEEPFACE<br>CLOUD: ACTIVE<br>MODE: LIVE</div>
       <div class="hud-tr" id="hudRight">DETECT: ON<br>IDENTIFY: ON<br>LIVENESS: ON<br>LOG: CLOUD</div>
-      <div class="cloud-badge">☁ POWERED BY AZURE</div>
+      <div class="cloud-badge">☁ CLOUD DEPLOYED</div>
       <div id="placeholder">
         <div class="ph-circle"><div class="ph-icon">☁</div></div>
-        <div class="ph-text">NEURAVISION AZURE EDITION<br>CONFIGURE BACKEND URL BELOW<br>THEN INITIALIZE</div>
+        <div class="ph-text">NEURAVISION CLOUD EDITION<br>CONFIGURE BACKEND URL BELOW<br>THEN INITIALIZE</div>
         <button id="startBtn" onclick="initCamera()">⚡ INITIALIZE SYSTEM</button>
       </div>
     </div>
@@ -251,14 +251,12 @@
 
     <!-- Azure Services -->
     <div class="panel">
-      <div class="panel-header"><span class="panel-title">AZURE SERVICES</span></div>
+      <div class="panel-header"><span class="panel-title">SYSTEM SERVICES</span></div>
       <div class="panel-body">
         <div class="azure-services">
           <div class="svc-pill checking" id="svc-api">⬡ FLASK API</div>
-          <div class="svc-pill checking" id="svc-faceapi">⬡ FACE API</div>
-          <div class="svc-pill checking" id="svc-mysql">⬡ AZURE MySQL</div>
-          <div class="svc-pill checking" id="svc-blob">⬡ BLOB STORE</div>
-          <div class="svc-pill checking" id="svc-signalr">⬡ SIGNALR</div>
+          <div class="svc-pill checking" id="svc-faceapi">⬡ DEEPFACE</div>
+          <div class="svc-pill checking" id="svc-mysql">⬡ POSTGRESQL DB</div>
           <div class="svc-pill checking" id="svc-liveness">⬡ LIVENESS</div>
         </div>
       </div>
@@ -285,7 +283,7 @@
 
     <!-- Biometrics -->
     <div class="panel">
-      <div class="panel-header"><span class="panel-title">AZURE BIOMETRIC ANALYSIS</span></div>
+      <div class="panel-header"><span class="panel-title">BIOMETRIC ANALYSIS</span></div>
       <div class="panel-body">
         <div class="biometric-grid">
           <div class="bio-card"><div class="bio-label">EST. AGE</div><div class="bio-value" id="bioAge">--</div></div>
@@ -298,7 +296,7 @@
 
     <!-- Liveness -->
     <div class="panel">
-      <div class="panel-header"><span class="panel-title">AZURE LIVENESS DETECTION</span></div>
+      <div class="panel-header"><span class="panel-title">LIVENESS DETECTION</span></div>
       <div class="panel-body liveness-panel">
         <div class="live-indicator idle" id="livenessIndicator">
           <div class="live-dot"></div>
@@ -344,7 +342,7 @@
 <!-- Register Modal -->
 <div id="registerModal">
   <div class="modal-box">
-    <div class="modal-title">REGISTER — AZURE FACE API</div>
+    <div class="modal-title">REGISTER NEW SUBJECT</div>
     <canvas id="registerSnapshot" width="300" height="110"></canvas>
     <div class="modal-field">
       <label class="modal-label">SUBJECT NAME</label>
@@ -360,7 +358,7 @@
     </div>
     <div class="modal-status" id="modalStatus"></div>
     <div class="modal-actions">
-      <button class="modal-btn confirm" onclick="confirmRegister()" id="confirmBtn">☁ REGISTER TO AZURE</button>
+      <button class="modal-btn confirm" onclick="confirmRegister()" id="confirmBtn">☁ REGISTER SUBJECT</button>
       <button class="modal-btn cancel" onclick="closeRegister()">✕ CANCEL</button>
     </div>
   </div>
@@ -401,13 +399,10 @@ async function checkBackend(){
     if(d.status === 'ok'){
       setSvc('api','ok');
       setbadge('backendStatus','◉ API ONLINE','green');
-      setSvc('faceapi', d.services?.face_api ? 'ok' : 'err');
-      setSvc('blob',    d.services?.blob     ? 'ok' : 'err');
-      setSvc('signalr', d.services?.signalr  ? 'ok' : 'err');
+      setSvc('faceapi', 'ok');
       setSvc('mysql','ok');
       setSvc('liveness','ok');
       loadStats();
-      connectSignalR();
     } else { setSvc('api','err'); }
   } catch(e){ setSvc('api','err'); setbadge('backendStatus','✕ API OFFLINE','red'); }
 }
@@ -416,7 +411,7 @@ function setSvc(id, state){
   const el = document.getElementById('svc-'+id);
   if(!el) return;
   el.className = 'svc-pill ' + state;
-  const labels = {api:'FLASK API',faceapi:'FACE API',mysql:'AZURE MySQL',blob:'BLOB STORE',signalr:'SIGNALR',liveness:'LIVENESS'};
+  const labels = {api:'FLASK API',faceapi:'DEEPFACE',mysql:'POSTGRESQL DB',liveness:'LIVENESS'};
   const icons  = {ok:'✓ ',err:'✗ ',checking:'⬡ '};
   el.textContent = (icons[state]||'') + labels[id];
 }
@@ -507,7 +502,7 @@ async function initCamera(){
     const canvas = document.getElementById('overlayCanvas');
     canvas.width = video.videoWidth; canvas.height = video.videoHeight;
     runDetectionLoop();
-    showToast('SYSTEM ONLINE — AZURE FACE API ACTIVE');
+    showToast('SYSTEM ONLINE — FACE RECOGNITION ACTIVE');
   } catch(e){
     document.getElementById('startBtn').disabled = false;
     document.getElementById('startBtn').textContent = '⚡ INITIALIZE SYSTEM';
@@ -515,7 +510,7 @@ async function initCamera(){
   }
 }
 
-// ── Detection loop — sends frames to Azure backend ────────────────────────────
+// ── Detection loop — sends frames to backend API ────────────────────────────
 function runDetectionLoop(){
   const video  = document.getElementById('videoEl');
   const canvas = document.getElementById('overlayCanvas');
@@ -610,7 +605,7 @@ function drawFace(ctx, face, canvas, video){
 
 // ── Panel updates ─────────────────────────────────────────────────────────────
 function updatePanels(face){
-  // Emotions — from Azure Face API
+  // Emotions — from face-api.js
   const em = face.emotions || {};
   const keys = ['happy','neutral','sad','angry','surprised','fearful','disgusted'];
   let topK='neutral', topV=0;
@@ -706,9 +701,9 @@ async function confirmRegister(){
   const b64  = snap.toDataURL('image/jpeg',.85).split(',')[1];
 
   const btn=document.getElementById('confirmBtn');
-  btn.textContent='UPLOADING TO AZURE...'; btn.disabled=true;
+  btn.textContent='SAVING TO DATABASE...'; btn.disabled=true;
   const ms=document.getElementById('modalStatus'); ms.style.display='block';
-  ms.className='modal-status ok'; ms.textContent='SENDING TO AZURE FACE API...';
+  ms.className='modal-status ok'; ms.textContent='PROCESSING REGISTRATION...';
 
   try {
     const r = await fetch(`${API_BASE}/api/subjects/register`,{
@@ -717,7 +712,7 @@ async function confirmRegister(){
     });
     const d = await r.json();
     if(r.ok){
-      ms.textContent='✓ REGISTERED TO AZURE: '+d.person_id?.slice(0,8)+'...';
+      ms.textContent='✓ REGISTERED — ID: '+d.person_id?.slice(0,8)+'...';
       document.getElementById('statRegistered').textContent =
         parseInt(document.getElementById('statRegistered').textContent||0)+1;
       setTimeout(closeRegister, 1500);
@@ -728,7 +723,7 @@ async function confirmRegister(){
   } catch(e){
     ms.className='modal-status err'; ms.textContent='✗ API UNREACHABLE';
   }
-  btn.textContent='☁ REGISTER TO AZURE'; btn.disabled=false;
+  btn.textContent='☁ REGISTER SUBJECT'; btn.disabled=false;
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
